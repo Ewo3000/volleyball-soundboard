@@ -1,0 +1,1130 @@
+/**
+ * SV 1845 Esslingen - Volleyball DJ Soundboard
+ * Modern Responsive Styling & Club Theme
+ */
+
+:root {
+  /* SV 1845 Esslingen Brand Colors */
+  --bg-primary: #0B0F17;
+  --bg-secondary: #121824;
+  --bg-surface: #1E293B;
+  --bg-surface-hover: #334155;
+  --bg-surface-active: #475569;
+  --club-blue: #1B75BC;
+  --club-blue-hover: #2187D6;
+  --club-blue-glow: rgba(27, 117, 188, 0.45);
+  --flame-red: #E53935;
+  --flame-red-hover: #EF4444;
+  --flame-red-glow: rgba(229, 57, 53, 0.45);
+  --text-white: #F8FAFC;
+  --text-silver: #CBD5E1;
+  --text-muted: #94A3B8;
+  --border-subtle: #1E293B;
+  --border-glass: rgba(255, 255, 255, 0.08);
+
+  /* 7 Column Categories */
+  --col-ass-angriff: #1B75BC;
+  --col-ass-angriff-glow: rgba(27, 117, 188, 0.35);
+  --col-block: #D81B60;
+  --col-block-glow: rgba(216, 27, 96, 0.35);
+  --col-gegner: #E53935;
+  --col-gegner-glow: rgba(229, 57, 53, 0.35);
+  --col-sonstiges-1: #10B981;
+  --col-sonstiges-2: #10B981;
+  --col-sonstiges-3: #10B981;
+  --col-emerald: #10B981;
+  --col-emerald-dark: #059669;
+  --col-emerald-glow: rgba(16, 185, 129, 0.35);
+  --col-spass: #8E24AA;
+  --col-purple: #9333EA;
+  --col-spass-glow: rgba(142, 36, 170, 0.35);
+
+  /* Quick Actions (Footer Bar) */
+  --quick-timeout: #F59E0B;
+  --quick-timeout-hover: #D97706;
+  --quick-walkon: #1B75BC;
+  --quick-walkon-hover: #2563EB;
+  --quick-pause: #334155;
+  --quick-pause-hover: #475569;
+  --quick-sixseven: #EA580C;
+  --quick-sixseven-hover: #C2410C;
+  --quick-indigo: #4338CA;
+  --quick-indigo-light: #4F46E5;
+  --quick-stop: #DC2626;
+  --quick-stop-hover: #B91C1C;
+  --quick-stop-glow: rgba(220, 38, 38, 0.55);
+
+  /* Fonts & Shadows */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-neon-blue: 0 0 15px rgba(27, 117, 188, 0.7), 0 0 30px rgba(27, 117, 188, 0.4);
+}
+
+/* ==========================================================================
+   Base & Modern Reset
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-white);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+/* Touch Ergonomics on interactive elements */
+button,
+input,
+select,
+.btn,
+.track-btn,
+.song-btn,
+.quick-btn {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(11, 15, 23, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-surface-hover);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ==========================================================================
+   Main Application Layout
+   ========================================================================== */
+
+#app,
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+/* ==========================================================================
+   Header Section (Banner & Compact Controls)
+   ========================================================================== */
+
+.app-header,
+header.header,
+#main-header {
+  background: linear-gradient(180deg, rgba(18, 24, 36, 0.98) 0%, rgba(11, 15, 23, 0.95) 100%);
+  border-bottom: 1px solid var(--border-glass);
+  backdrop-filter: blur(16px);
+  z-index: 100;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-md);
+  flex-shrink: 0;
+}
+
+/* Collapsible Banner Area */
+.header-banner,
+#header-banner {
+  max-height: 140px;
+  overflow: hidden;
+  opacity: 1;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header.collapsed .header-banner,
+.app-header.collapsed .header-banner,
+#main-header.collapsed #header-banner {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+  border-bottom-color: transparent;
+  pointer-events: none;
+}
+
+/* Brand & Club Logo */
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.club-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  border: 2px solid var(--club-blue);
+  box-shadow: 0 0 10px var(--club-blue-glow);
+}
+
+.brand-text h1 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-white);
+  line-height: 1.2;
+}
+
+.brand-text h1 span {
+  color: var(--flame-red);
+}
+
+.brand-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-silver);
+  font-weight: 500;
+}
+
+/* Header Banner Actions */
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-status-badge {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-full);
+  color: var(--text-silver);
+  font-weight: 500;
+}
+
+.btn-load-folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--club-blue);
+  color: var(--text-white);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px var(--club-blue-glow);
+}
+
+.btn-load-folder:hover {
+  background: var(--club-blue-hover);
+  transform: translateY(-1px);
+}
+
+.btn-load-folder:active {
+  transform: translateY(1px);
+}
+
+/* Compact Control Strip (Always Visible or Minimized) */
+.header-controls,
+#header-controls {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 50px;
+}
+
+.controls-left,
+.controls-center,
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls-center {
+  flex: 1;
+  max-width: 480px;
+}
+
+/* Header Toggle Button ("Kopf ein / aus") */
+.btn-toggle-header {
+  padding: 7px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  color: var(--text-silver);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle-header:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-white);
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.btn-zoom {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-silver);
+  background: transparent;
+  transition: all 0.15s ease;
+}
+
+.btn-zoom:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-white);
+}
+
+.zoom-level-text {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 6px;
+  min-width: 44px;
+  text-align: center;
+}
+
+/* Live Search Box */
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 7px 70px 7px 32px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  color: var(--text-white);
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--club-blue);
+  box-shadow: 0 0 0 2px var(--club-blue-glow);
+  background: var(--bg-secondary);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.search-counter-badge,
+.search-badge,
+#search-count {
+  position: absolute;
+  right: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  background: var(--club-blue);
+  color: var(--text-white);
+  border-radius: var(--radius-full);
+}
+
+/* Master Volume Slider */
+.volume-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+}
+
+.volume-icon {
+  color: var(--text-silver);
+  font-size: 0.9rem;
+}
+
+.volume-slider {
+  width: 80px;
+  accent-color: var(--club-blue);
+  cursor: pointer;
+  height: 4px;
+}
+
+.volume-value {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 34px;
+  text-align: right;
+}
+
+/* Utility Header Buttons */
+.btn-header-tool {
+  padding: 7px 11px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  color: var(--text-silver);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-header-tool:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-white);
+}
+
+.btn-reset-counts:hover {
+  border-color: var(--flame-red);
+  color: var(--flame-red);
+}
+
+/* ==========================================================================
+   Zoomable Soundboard Grid Container
+   ========================================================================== */
+
+#board-container,
+.board-container,
+.zoom-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  transform-origin: top center;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 7-Column Soundboard Grid (Tablet Landscape) */
+#soundboard-grid,
+.soundboard-grid,
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  padding: 10px 12px 76px 12px; /* Bottom padding keeps space for fixed footer */
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* Individual Column */
+.soundboard-column,
+.grid-column,
+.column {
+  background: rgba(18, 24, 36, 0.7);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Column Header */
+.column-header {
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-bottom: 2px solid transparent;
+  background: rgba(30, 41, 59, 0.5);
+  flex-shrink: 0;
+}
+
+.column-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.column-count-badge,
+.column-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-silver);
+}
+
+/* Category Specific Colors for Headers & Columns */
+/* 1. Ass/Angriff (Blue) */
+.col-ass-angriff .column-header,
+[data-category="ass_angriff"] .column-header {
+  border-bottom-color: var(--col-ass-angriff);
+}
+.col-ass-angriff .column-title,
+[data-category="ass_angriff"] .column-title {
+  color: #60A5FA;
+}
+
+/* 2. Block (Magenta/Pink) */
+.col-block .column-header,
+[data-category="block"] .column-header {
+  border-bottom-color: var(--col-block);
+}
+.col-block .column-title,
+[data-category="block"] .column-title {
+  color: #F472B6;
+}
+
+/* 3. Gegner (Flame Red) */
+.col-gegner .column-header,
+[data-category="gegner"] .column-header {
+  border-bottom-color: var(--col-gegner);
+}
+.col-gegner .column-title,
+[data-category="gegner"] .column-title {
+  color: #F87171;
+}
+
+/* 4, 5, 6. Sonstiges 1, 2, 3 (Emerald Green) */
+.col-sonstiges-1 .column-header,
+.col-sonstiges-2 .column-header,
+.col-sonstiges-3 .column-header,
+[data-category="sonstiges_1"] .column-header,
+[data-category="sonstiges_2"] .column-header,
+[data-category="sonstiges_3"] .column-header {
+  border-bottom-color: var(--col-emerald);
+}
+.col-sonstiges-1 .column-title,
+.col-sonstiges-2 .column-title,
+.col-sonstiges-3 .column-title,
+[data-category="sonstiges_1"] .column-title,
+[data-category="sonstiges_2"] .column-title,
+[data-category="sonstiges_3"] .column-title {
+  color: #34D399;
+}
+
+/* 7. Spaß & Extras (Purple/Violet) */
+.col-spass .column-header,
+.col-spass_extras .column-header,
+[data-category="spass_extras"] .column-header {
+  border-bottom-color: var(--col-spass);
+}
+.col-spass .column-title,
+.col-spass_extras .column-title,
+[data-category="spass_extras"] .column-title {
+  color: #C084FC;
+}
+
+/* Track List Container inside Column */
+.column-tracks,
+.tracks-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Empty State inside column */
+.column-empty {
+  padding: 16px 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Song / Track Buttons & Badges
+   ========================================================================== */
+
+.song-btn,
+.track-btn {
+  position: relative;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 8px 7px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  text-align: left;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.song-btn:hover,
+.track-btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.song-btn:active,
+.track-btn:active {
+  transform: translateY(1px);
+  background: var(--bg-surface-active);
+}
+
+.song-title,
+.track-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  flex: 1;
+}
+
+/* Play Count Badge on the Right */
+.play-badge,
+.play-count,
+.track-count-badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--text-silver);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+/* Played at least once badge accent */
+.play-badge[data-count]:not([data-count="0"]),
+.song-btn.has-played .play-badge {
+  background: rgba(27, 117, 188, 0.3);
+  color: #93C5FD;
+  border-color: var(--club-blue);
+}
+
+/* Active Playing Neon Glow & Pulse Animation */
+@keyframes pulse-playing-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(27, 117, 188, 0.7), inset 0 0 8px rgba(27, 117, 188, 0.4);
+    border-color: #60A5FA;
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(27, 117, 188, 1), inset 0 0 14px rgba(27, 117, 188, 0.7);
+    border-color: #93C5FD;
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(27, 117, 188, 0.7), inset 0 0 8px rgba(27, 117, 188, 0.4);
+    border-color: #60A5FA;
+  }
+}
+
+.song-btn.is-playing,
+.song-btn.playing,
+.track-btn.is-playing,
+.track-btn.playing,
+[data-playing="true"] {
+  background: #172554 !important;
+  border-color: #60A5FA !important;
+  animation: pulse-playing-glow 1.4s infinite ease-in-out;
+  color: #EFF6FF !important;
+  z-index: 2;
+}
+
+.song-btn.is-playing .play-badge,
+.track-btn.is-playing .play-badge {
+  background: var(--flame-red) !important;
+  color: var(--text-white) !important;
+  border-color: var(--flame-red) !important;
+}
+
+/* Real-Time Search Match & Dim Effects */
+.song-btn.search-dimmed,
+.track-btn.dimmed,
+.dimmed {
+  opacity: 0.2 !important;
+  filter: grayscale(80%);
+}
+
+.song-btn.search-highlighted,
+.track-btn.highlighted,
+.highlighted {
+  border-color: var(--club-blue) !important;
+  box-shadow: 0 0 12px var(--club-blue-glow) !important;
+  background: #1E293B !important;
+}
+
+/* ==========================================================================
+   Quick Action Footer Bar
+   ========================================================================== */
+
+#quick-actions-bar,
+.quick-footer,
+.footer-bar,
+footer.quick-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(11, 15, 23, 0.95);
+  border-top: 1px solid var(--border-glass);
+  backdrop-filter: blur(16px);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 500;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+  min-height: 64px;
+}
+
+/* Quick Action Grouping */
+.quick-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-btn {
+  height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-white);
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+
+.quick-btn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.quick-btn:active {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+}
+
+/* Specific Quick Action Colors */
+/* 1. Timeout (Amber) */
+.btn-timeout,
+.quick-btn[data-action="timeout"] {
+  background: var(--quick-timeout);
+  color: #0B0F17;
+  font-weight: 800;
+}
+.btn-timeout:hover,
+.quick-btn[data-action="timeout"]:hover {
+  background: var(--quick-timeout-hover);
+}
+
+/* 2. Walk-On (Club Blue) */
+.btn-walkon,
+.quick-btn[data-action="walkon"] {
+  background: var(--club-blue);
+  color: var(--text-white);
+}
+.btn-walkon:hover,
+.quick-btn[data-action="walkon"]:hover {
+  background: var(--quick-walkon-hover);
+}
+
+/* 3. Pausensongs (Slate) */
+.btn-pause,
+.pause-slot-btn,
+.quick-btn[data-action="pause"] {
+  background: var(--quick-pause);
+  color: var(--text-silver);
+  border: 1px solid var(--border-glass);
+}
+.btn-pause:hover,
+.pause-slot-btn:hover,
+.quick-btn[data-action="pause"]:hover {
+  background: var(--quick-pause-hover);
+  color: var(--text-white);
+}
+
+.pause-slots-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pause-slot-btn {
+  min-width: 40px;
+  height: 48px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+}
+
+/* 4. 6/7 (Orange) */
+.btn-sixseven,
+.quick-btn[data-action="sixseven"],
+.quick-btn[data-action="67"] {
+  background: var(--quick-sixseven);
+  color: var(--text-white);
+  font-weight: 800;
+}
+.btn-sixseven:hover,
+.quick-btn[data-action="sixseven"]:hover,
+.quick-btn[data-action="67"]:hover {
+  background: var(--quick-sixseven-hover);
+}
+
+/* 5. Eigene & Gegner Punkte (Indigo) */
+.btn-random-eigene,
+.btn-random-gegner,
+.quick-btn[data-action="random-eigene"],
+.quick-btn[data-action="random-gegner"] {
+  background: var(--quick-indigo);
+  color: var(--text-white);
+}
+.btn-random-eigene:hover,
+.btn-random-gegner:hover,
+.quick-btn[data-action="random-eigene"]:hover,
+.quick-btn[data-action="random-gegner"]:hover {
+  background: var(--quick-indigo-light);
+}
+
+/* 6. Stop Button (Signal Red) - Large & Prominent */
+.btn-stop,
+.quick-btn[data-action="stop"] {
+  background: var(--quick-stop);
+  color: var(--text-white);
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 0 22px;
+  min-width: 100px;
+  box-shadow: 0 0 16px var(--quick-stop-glow);
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-stop:hover,
+.quick-btn[data-action="stop"]:hover {
+  background: var(--quick-stop-hover);
+  box-shadow: 0 0 24px var(--quick-stop-glow);
+}
+
+/* ==========================================================================
+   Mobile Portrait Mode (@media (max-width: 768px))
+   ========================================================================== */
+
+/* Initially hidden on desktop/tablet */
+#mobile-pad,
+.mobile-pad,
+.mobile-quick-pad {
+  display: none;
+}
+
+.drawer,
+#all-songs-drawer,
+.modal-drawer {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Hide 7-column grid from main screen on phones */
+  #soundboard-grid,
+  .soundboard-grid,
+  .grid-container {
+    display: none !important;
+  }
+
+  /* Compact Header on Mobile */
+  .header-banner,
+  #header-banner {
+    display: none !important;
+  }
+
+  .app-header,
+  header.header,
+  #main-header {
+    border-bottom: 1px solid var(--border-glass);
+  }
+
+  .header-controls,
+  #header-controls {
+    padding: 6px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .controls-left .btn-toggle-header,
+  .controls-left .zoom-controls {
+    display: none;
+  }
+
+  .controls-center {
+    order: 1;
+    width: 100%;
+    max-width: none;
+  }
+
+  .volume-group {
+    padding: 4px 6px;
+  }
+  .volume-slider {
+    width: 60px;
+  }
+
+  /* Display Large Mobile Quick-Action Pad */
+  #mobile-pad,
+  .mobile-pad,
+  .mobile-quick-pad {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    flex: 1;
+    overflow-y: auto;
+    background-color: var(--bg-primary);
+  }
+
+  .mobile-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .mobile-quick-btn {
+    min-height: 58px;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 10px;
+    color: var(--text-white);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .mobile-stop-btn {
+    min-height: 72px;
+    width: 100%;
+    background: var(--quick-stop);
+    color: var(--text-white);
+    font-size: 1.25rem;
+    font-weight: 900;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 0 20px var(--quick-stop-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* "Alle Songs & Kategorien" Button in Mobile View */
+  .btn-open-drawer,
+  .btn-all-songs {
+    min-height: 52px;
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--club-blue);
+    color: var(--text-white);
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* Hide regular desktop footer on mobile to prevent double actions */
+  #quick-actions-bar,
+  .quick-footer,
+  .footer-bar {
+    display: none !important;
+  }
+
+  /* Fullscreen Modal Drawer for All Songs & Categories */
+  .drawer,
+  #all-songs-drawer,
+  .modal-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 15, 23, 0.98);
+    backdrop-filter: blur(20px);
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .drawer.open,
+  .drawer.active,
+  #all-songs-drawer.open,
+  #all-songs-drawer.active,
+  .modal-drawer.open {
+    transform: translateY(0);
+  }
+
+  .drawer-header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-glass);
+    background: var(--bg-secondary);
+  }
+
+  .drawer-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-white);
+  }
+
+  .btn-close-drawer {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: var(--bg-surface);
+    color: var(--text-silver);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+
+  .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .drawer-category-group {
+    background: rgba(18, 24, 36, 0.7);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .drawer-category-header {
+    padding: 10px 14px;
+    background: rgba(30, 41, 59, 0.6);
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .drawer-tracks-list {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .drawer-tracks-list .song-btn,
+  .drawer-tracks-list .track-btn {
+    min-height: 48px;
+  }
+}
