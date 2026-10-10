@@ -93,7 +93,14 @@ export class IndexedDBStorageEngine {
     });
   }
 
+  _ensureDB() {
+    if (!this.db) {
+      throw new Error('IndexedDBStorageEngine is not initialized. Call init() first.');
+    }
+  }
+
   async saveTracks(trackList) {
+    this._ensureDB();
     const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
     const store = tx.objectStore(TRACKS_STORE);
     for (const track of trackList) {
@@ -106,6 +113,7 @@ export class IndexedDBStorageEngine {
   }
 
   async getAllTracks() {
+    this._ensureDB();
     const tx = this.db.transaction([TRACKS_STORE], 'readonly');
     const store = tx.objectStore(TRACKS_STORE);
     const request = store.getAll();
@@ -116,6 +124,7 @@ export class IndexedDBStorageEngine {
   }
 
   async updateTrackPlayCount(id, playCount) {
+    this._ensureDB();
     const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
     const store = tx.objectStore(TRACKS_STORE);
     const getReq = store.get(id);
@@ -128,13 +137,15 @@ export class IndexedDBStorageEngine {
           track.lastPlayed = Date.now();
           store.put(track);
         }
-        resolve();
       };
       getReq.onerror = () => reject(getReq.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
   }
 
   async resetAllPlayCounts() {
+    this._ensureDB();
     const tracks = await this.getAllTracks();
     const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
     const store = tx.objectStore(TRACKS_STORE);
@@ -149,6 +160,7 @@ export class IndexedDBStorageEngine {
   }
 
   async clearAllTracks() {
+    this._ensureDB();
     const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
     const store = tx.objectStore(TRACKS_STORE);
     store.clear();
@@ -159,6 +171,7 @@ export class IndexedDBStorageEngine {
   }
 
   async saveSetting(key, value) {
+    this._ensureDB();
     const tx = this.db.transaction([SETTINGS_STORE], 'readwrite');
     const store = tx.objectStore(SETTINGS_STORE);
     store.put({ key, value });
@@ -169,6 +182,7 @@ export class IndexedDBStorageEngine {
   }
 
   async getSetting(key, defaultValue = null) {
+    this._ensureDB();
     const tx = this.db.transaction([SETTINGS_STORE], 'readonly');
     const store = tx.objectStore(SETTINGS_STORE);
     const request = store.get(key);

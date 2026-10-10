@@ -89,6 +89,61 @@ test('IndexedDBStorageEngine throws when indexedDB is undefined', async () => {
   );
 });
 
+test('IndexedDBStorageEngine throws if operations called before init()', async () => {
+  const idbEngine = new IndexedDBStorageEngine();
+  const expectedErr = { message: 'IndexedDBStorageEngine is not initialized. Call init() first.' };
+
+  await assert.rejects(async () => idbEngine.saveTracks([]), expectedErr);
+  await assert.rejects(async () => idbEngine.getAllTracks(), expectedErr);
+  await assert.rejects(async () => idbEngine.updateTrackPlayCount('id', 1), expectedErr);
+  await assert.rejects(async () => idbEngine.resetAllPlayCounts(), expectedErr);
+  await assert.rejects(async () => idbEngine.clearAllTracks(), expectedErr);
+  await assert.rejects(async () => idbEngine.saveSetting('k', 'v'), expectedErr);
+  await assert.rejects(async () => idbEngine.getSetting('k'), expectedErr);
+});
+
+test('IndexedDBStorageEngine.updateTrackPlayCount awaits tx.oncomplete', async () => {
+  const idbEngine = new IndexedDBStorageEngine();
+  let putCalled = false;
+  let completeCalled = false;
+
+  const mockStore = {
+    get: () => {
+      const req = {};
+      setTimeout(() => {
+        req.result = { id: 'track-1', playCount: 1 };
+        if (req.onsuccess) req.onsuccess();
+      }, 0);
+      return req;
+    },
+    put: (item) => {
+      putCalled = true;
+      assert.equal(item.playCount, 3);
+    }
+  };
+
+  const mockTx = {
+    objectStore: () => mockStore,
+    oncomplete: null,
+    onerror: null
+  };
+
+  idbEngine.db = {
+    transaction: () => {
+      setTimeout(() => {
+        completeCalled = true;
+        if (mockTx.oncomplete) mockTx.oncomplete();
+      }, 5);
+      return mockTx;
+    }
+  };
+
+  await idbEngine.updateTrackPlayCount('track-1', 3);
+  assert.equal(putCalled, true);
+  assert.equal(completeCalled, true);
+});
+
+
 test('module-level convenience functions delegate to default storage', async () => {
   const customEngine = new MemoryStorageEngine();
   setDefaultStorage(customEngine);
