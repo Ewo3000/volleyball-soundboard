@@ -13,3 +13,59 @@ test('pause buttons are titled Pause 1 through Pause 4 and have doubled min-widt
   // Doubled from original 26px to at least 52px
   assert.match(css, /\.pause-slot-btn[\s\S]*?min-width:\s*clamp\(\s*5[2-6]px/);
 });
+
+test('pause hourglass overlay exists in DOM and functions are exported in js/app.js', async () => {
+  const html = fs.readFileSync('index.html', 'utf8');
+  assert.match(html, /id="pause-overlay"/);
+  assert.match(html, /class="pause-hourglass-icon"/);
+  assert.match(html, /Satzpause/);
+
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.pause-overlay/);
+  assert.match(css, /hourglass/i);
+
+  const { showPauseOverlay, hidePauseOverlay } = await import('../js/app.js');
+  assert.equal(typeof showPauseOverlay, 'function');
+  assert.equal(typeof hidePauseOverlay, 'function');
+});
+
+test('showPauseOverlay and hidePauseOverlay manipulate DOM elements correctly', async () => {
+  const { showPauseOverlay, hidePauseOverlay } = await import('../js/app.js');
+  
+  const originalDocument = globalThis.document;
+  try {
+    const overlay = {
+      style: { display: 'none' },
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      },
+      attributes: {},
+      setAttribute(k, v) { this.attributes[k] = v; },
+      getAttribute(k) { return this.attributes[k]; }
+    };
+    const trackNameEl = { textContent: '' };
+
+    globalThis.document = {
+      getElementById(id) {
+        if (id === 'pause-overlay') return overlay;
+        if (id === 'pause-overlay-track-name') return trackNameEl;
+        return null;
+      }
+    };
+
+    showPauseOverlay({ name: 'Track01_PAUSE1.mp3' });
+    assert.equal(overlay.style.display, 'flex');
+    assert.equal(overlay.getAttribute('aria-hidden'), 'false');
+    assert.ok(trackNameEl.textContent.includes('Track01'));
+
+    hidePauseOverlay();
+    assert.equal(overlay.getAttribute('aria-hidden'), 'true');
+    assert.ok(!overlay.classList.contains('active'));
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+

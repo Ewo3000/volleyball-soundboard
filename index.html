@@ -89,6 +89,14 @@
 
     <!-- Main Soundboard Container -->
     <main id="board-container" class="board-container">
+      <div id="pause-overlay" class="pause-overlay" aria-hidden="true" style="display: none;">
+        <div class="pause-overlay-content">
+          <div class="pause-hourglass-icon">⏳</div>
+          <div class="pause-overlay-title">Satzpause</div>
+          <div class="pause-track-name" id="pause-overlay-track-name">Pausensong läuft...</div>
+          <div class="pause-overlay-hint">Musik stoppen über ■ STOP</div>
+        </div>
+      </div>
       <!-- 7-Column Soundboard Grid (Landscape / Desktop / Tablet) -->
       <div id="columns-grid" class="soundboard-grid grid-container">
         <!-- 1. Ass / Angriff -->

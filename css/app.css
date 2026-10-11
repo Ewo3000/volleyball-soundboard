@@ -1542,3 +1542,84 @@ footer.quick-actions {
   transition: opacity 0.4s ease-out !important;
 }
 
+/* ==========================================================================
+   Pause Hourglass Overlay over Mediathek
+   ========================================================================== */
+.board-container {
+  position: relative;
+}
+
+#pause-overlay,
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 15, 23, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pause-overlay.active {
+  opacity: 1;
+}
+
+.pause-overlay-content {
+  text-align: center;
+  padding: 24px 32px;
+  background: rgba(23, 37, 84, 0.8);
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 0 32px rgba(27, 117, 188, 0.4);
+  border-radius: var(--radius-lg);
+  max-width: 400px;
+}
+
+.pause-hourglass-icon {
+  font-size: 3.5rem;
+  line-height: 1;
+  margin-bottom: 12px;
+  animation: hourglass-flip 3s infinite ease-in-out;
+}
+
+@keyframes hourglass-flip {
+  0% { transform: rotate(0deg) scale(1); }
+  45% { transform: rotate(0deg) scale(1.05); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  95% { transform: rotate(180deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes hourglass-float-rotate {
+  0% { transform: rotate(0deg) scale(1); }
+  45% { transform: rotate(0deg) scale(1.05); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  95% { transform: rotate(180deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.pause-overlay-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-white);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pause-track-name {
+  font-size: 1.05rem;
+  color: #93C5FD;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.pause-overlay-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 14px;
+}
+
+

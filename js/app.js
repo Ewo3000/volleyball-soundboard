@@ -266,6 +266,17 @@ export async function handlePlayTrack(track) {
     if (!wakeLock.isActive()) {
       wakeLock.requestLock().catch((err) => console.warn('Wake lock error:', err));
     }
+
+    const isPauseTrack =
+      track.category === 'pause' ||
+      /_PAUSE\d*$/i.test(track.suffix || '') ||
+      /_(?:PAUSE\d*|PAUSENSONG)$/i.test(stripExtension(track.name || ''));
+    if (isPauseTrack) {
+      showPauseOverlay(track);
+    } else {
+      hidePauseOverlay();
+    }
+
     await audioEngine.playTrack(track);
 
     track.playCount = (typeof track.playCount === 'number' ? track.playCount : 0) + 1;
@@ -274,6 +285,7 @@ export async function handlePlayTrack(track) {
 
     updateTrackDOMPlayCount(track.id, track.playCount);
   } catch (err) {
+    hidePauseOverlay();
     console.error('Error playing track:', err);
   }
 }
@@ -465,13 +477,56 @@ export function playPauseSlot(slotIndex) {
     track = pauseTracks[slotIndex - 1];
   }
   if (track) {
+    showPauseOverlay(track);
     handlePlayTrack(track);
   } else if (pauseTracks.length > 0) {
     const fallback = pickLeastPlayedRandomTrack(pauseTracks);
-    if (fallback) handlePlayTrack(fallback);
+    if (fallback) {
+      showPauseOverlay(fallback);
+      handlePlayTrack(fallback);
+    }
   } else {
     console.warn(`Kein Pausensong für Slot ${slotIndex} vorhanden`);
   }
+}
+
+/**
+ * Shows animated hourglass pause overlay over the mediathek during pause tracks
+ */
+export function showPauseOverlay(track) {
+  if (typeof document === 'undefined') return;
+  const overlay = document.getElementById('pause-overlay');
+  if (!overlay) return;
+  const trackNameEl = document.getElementById('pause-overlay-track-name');
+  if (trackNameEl) {
+    const title = track?.name || track?.title;
+    trackNameEl.textContent = title ? cleanTrackTitle(title) : 'Pausensong läuft...';
+  }
+  overlay.style.display = 'flex';
+  overlay.setAttribute('aria-hidden', 'false');
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      overlay.classList.add('active');
+    });
+  } else {
+    overlay.classList.add('active');
+  }
+}
+
+/**
+ * Hides animated hourglass pause overlay
+ */
+export function hidePauseOverlay() {
+  if (typeof document === 'undefined') return;
+  const overlay = document.getElementById('pause-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  overlay.setAttribute('aria-hidden', 'true');
+  setTimeout(() => {
+    if (!overlay.classList.contains('active')) {
+      overlay.style.display = 'none';
+    }
+  }, 300);
 }
 
 export function playSixSeven() {
@@ -603,6 +658,7 @@ export function playRandomOpponent() {
 }
 
 export function stopAudio() {
+  hidePauseOverlay();
   audioEngine.stop(2000);
 }
 
@@ -770,9 +826,11 @@ export function setupEventListeners() {
   };
   audioEngine.onTrackStop = () => {
     updatePlayingUI(null);
+    hidePauseOverlay();
   };
   audioEngine.onTrackEnd = () => {
     updatePlayingUI(null);
+    hidePauseOverlay();
   };
 
   // One-time user gesture listener to acquire wake lock on first interaction
