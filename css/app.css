@@ -898,7 +898,7 @@ footer.quick-actions {
   height: clamp(50px, 6.5vh, 66px); /* ~half the bar height */
   flex: 1 1 auto;
   width: 100%;
-  min-width: clamp(60px, 7vw, 100px);
+  min-width: clamp(120px, 14vw, 200px);
 }
 
 .btn-main-text {

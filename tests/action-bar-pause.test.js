@@ -133,3 +133,9 @@ test('css allows 3-line text wrapping for action buttons', () => {
   assert.match(css, /\.btn-main-text[\s\S]*?white-space:\s*normal/);
 });
 
+test('timeout and walk-on buttons have doubled min-width in stacked column', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.stacked-btn[\s\S]*?min-width:\s*clamp\(\s*120px/);
+});
+
+
