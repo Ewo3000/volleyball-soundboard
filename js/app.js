@@ -561,6 +561,9 @@ export function playPauseSlot(slotIndex, triggerBtn) {
   } else {
     clearActiveTriggerButton();
     console.warn(`Kein Pausensong für Slot ${slotIndex} vorhanden`);
+    if (typeof alert === 'function') {
+      alert(`Kein Pausensong für Slot ${slotIndex} geladen. Bitte Song mit Suffix _PAUSE${slotIndex} hochladen oder 'Demo-Sounds laden' klicken.`);
+    }
   }
 }
 
@@ -577,14 +580,7 @@ export function showPauseOverlay(track) {
     trackNameEl.textContent = title ? cleanTrackTitle(title) : 'Pausensong läuft...';
   }
   overlay.setAttribute('aria-hidden', 'false');
-  // Use rAF to ensure the class toggle triggers the CSS transition
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => {
-      overlay.classList.add('active');
-    });
-  } else {
-    overlay.classList.add('active');
-  }
+  overlay.classList.add('active');
 }
 
 /**
@@ -598,7 +594,58 @@ export function hidePauseOverlay() {
   overlay.setAttribute('aria-hidden', 'true');
 }
 
+/**
+ * Triggers fullscreen hype animation with screen shake on 6/7 action
+ */
+export function triggerSixSevenAnimation() {
+  if (typeof document === 'undefined') return null;
+  const overlay = document.getElementById('fx-overlay');
+  const appContainer = document.getElementById('app') || document.body;
+
+  if (appContainer?.classList) {
+    appContainer.classList.add('screen-shake');
+    setTimeout(() => {
+      appContainer.classList.remove('screen-shake');
+    }, 700);
+  }
+
+  // Haptic feedback if supported by browser/device
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate([100, 50, 100, 50, 200]);
+    }
+  } catch (_) {}
+
+  if (!overlay) return null;
+
+  overlay.innerHTML = '';
+
+  const container = document.createElement('div');
+  container.className = 'fx-sixseven-container fx-sixseven';
+  container.innerHTML = `
+    <div class="fx-sixseven-burst"></div>
+    <div class="fx-sixseven-ring"></div>
+    <div class="fx-sixseven-ring-outer"></div>
+    <div class="fx-sixseven-content">
+      <div class="fx-sixseven-number">6 / 7</div>
+      <div class="fx-sixseven-subtitle">HYPE!</div>
+    </div>
+  `;
+
+  overlay.appendChild(container);
+
+  setTimeout(() => {
+    container?.classList?.add('fx-fade-out');
+    setTimeout(() => {
+      container?.remove?.();
+    }, 400);
+  }, 1400);
+
+  return container;
+}
+
 export function playSixSeven(triggerBtn) {
+  triggerSixSevenAnimation();
   const sixSevenTracks = allTracks.filter(
     (t) => t.category === 'sixseven' || t.suffix === '_SIXSEVEN' || /_(?:SIXSEVEN|67)$/i.test(stripExtension(t.name))
   );
@@ -778,7 +825,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.8.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -928,6 +975,14 @@ export function setupEventListeners() {
   // AudioEngine lifecycle callbacks
   audioEngine.onTrackStart = (track) => {
     updatePlayingUI(track ? track.id : null);
+    const isPause =
+      track &&
+      (track.category === 'pause' ||
+        /_PAUSE[_\s-]?\d*$/i.test(track.suffix || '') ||
+        /_(?:PAUSE[_\s-]?\d*|PAUSENSONG)$/i.test(stripExtension(track.name || '')));
+    if (isPause) {
+      showPauseOverlay(track);
+    }
   };
   audioEngine.onTrackStop = () => {
     updatePlayingUI(null);

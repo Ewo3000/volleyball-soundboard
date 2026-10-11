@@ -144,3 +144,110 @@ test('css/app.css styles fullscreen fx overlay, flames and shield with pointer-e
   assert.ok(css.includes('@keyframes fx-flame') || css.includes('@keyframes flame-burst'), 'must define flame animation keyframes');
   assert.ok(css.includes('@keyframes fx-shield') || css.includes('@keyframes shield-impact'), 'must define shield animation keyframes');
 });
+
+test('triggerSixSevenAnimation injects 6/7 FX overlay and applies screen-shake class', async () => {
+  const { triggerSixSevenAnimation } = await import('../js/app.js');
+  assert.equal(typeof triggerSixSevenAnimation, 'function');
+
+  const originalDoc = globalThis.document;
+  try {
+    const overlay = {
+      innerHTML: '',
+      appendChild(el) { this.children.push(el); },
+      children: []
+    };
+    const appEl = {
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      }
+    };
+
+    globalThis.document = {
+      getElementById(id) {
+        if (id === 'fx-overlay') return overlay;
+        if (id === 'app') return appEl;
+        return null;
+      },
+      createElement(tag) {
+        return {
+          tagName: tag,
+          className: '',
+          innerHTML: '',
+          classList: {
+            add() {},
+            remove() {}
+          },
+          remove() {}
+        };
+      }
+    };
+
+    const fx = triggerSixSevenAnimation();
+    assert.ok(fx);
+    assert.ok(fx.className.includes('fx-sixseven'));
+    assert.ok(appEl.classList.contains('screen-shake'));
+  } finally {
+    globalThis.document = originalDoc;
+  }
+});
+
+test('css/app.css styles screen-shake and 6/7 fullscreen hype FX', () => {
+  const css = fs.readFileSync(CSS_PATH, 'utf8');
+
+  assert.ok(css.includes('.screen-shake'), 'must define .screen-shake');
+  assert.ok(css.includes('@keyframes screen-shake'), 'must define screen-shake keyframes');
+  assert.ok(css.includes('.fx-sixseven-container'), 'must define .fx-sixseven-container');
+  assert.ok(css.includes('.fx-sixseven-burst'), 'must define .fx-sixseven-burst');
+  assert.ok(css.includes('.fx-sixseven-number'), 'must define .fx-sixseven-number');
+});
+
+test('playSixSeven triggers 6/7 animation and screen shake', async () => {
+  const { playSixSeven } = await import('../js/app.js');
+  const originalDoc = globalThis.document;
+  try {
+    const overlay = {
+      innerHTML: '',
+      appendChild(el) { this.children.push(el); },
+      children: []
+    };
+    const appEl = {
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      }
+    };
+
+    globalThis.document = {
+      getElementById(id) {
+        if (id === 'fx-overlay') return overlay;
+        if (id === 'app') return appEl;
+        return null;
+      },
+      createElement(tag) {
+        return {
+          tagName: tag,
+          className: '',
+          innerHTML: '',
+          classList: {
+            add() {},
+            remove() {}
+          },
+          remove() {}
+        };
+      }
+    };
+
+    playSixSeven();
+    assert.ok(appEl.classList.contains('screen-shake'), 'playSixSeven must trigger screen shake');
+    assert.ok(overlay.children.length > 0, 'playSixSeven must inject fx container into overlay');
+  } finally {
+    globalThis.document = originalDoc;
+  }
+});
+
+
