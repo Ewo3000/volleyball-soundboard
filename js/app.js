@@ -40,6 +40,7 @@ export let categorized = new Map();
 export let currentZoom = 100;
 export let isHeaderCollapsed = false;
 export let currentSearchQuery = '';
+export let activeTriggerBtn = null;
 
 export const COLUMN_IDS = [
   'ass_angriff',
@@ -238,6 +239,51 @@ export function updatePlayingUI(trackId) {
         pauseBtn.classList.remove('is-playing', 'playing');
       }
     }
+  }
+}
+
+/**
+ * Sets the active trigger button and marks it as playing/pulsing
+ */
+export function setActiveTriggerButton(btn) {
+  if (activeTriggerBtn && activeTriggerBtn !== btn) {
+    clearActiveTriggerButton();
+  }
+  if (typeof btn === 'string' && typeof document !== 'undefined') {
+    btn = document.getElementById(btn) || document.querySelector(btn);
+  }
+  activeTriggerBtn = btn || null;
+  if (activeTriggerBtn) {
+    if (activeTriggerBtn.classList?.add) {
+      activeTriggerBtn.classList.add('is-playing', 'playing');
+    }
+    if (activeTriggerBtn.setAttribute) {
+      activeTriggerBtn.setAttribute('data-playing', 'true');
+    }
+  }
+}
+
+/**
+ * Clears the active trigger button and removes playing/pulsing state
+ */
+export function clearActiveTriggerButton() {
+  if (activeTriggerBtn) {
+    if (activeTriggerBtn.classList?.remove) {
+      activeTriggerBtn.classList.remove('is-playing', 'playing');
+    }
+    if (activeTriggerBtn.removeAttribute) {
+      activeTriggerBtn.removeAttribute('data-playing');
+    }
+    activeTriggerBtn = null;
+  }
+  if (typeof document !== 'undefined') {
+    const activeBtns = document.querySelectorAll?.(
+      '.quick-btn.is-playing, .mobile-quick-btn.is-playing, .pause-slot-btn.is-playing'
+    );
+    activeBtns?.forEach?.((el) => {
+      el.classList?.remove?.('is-playing', 'playing');
+      el.removeAttribute?.('data-playing');
+    });
   }
 }
 
@@ -444,31 +490,45 @@ export async function toggleFullscreen() {
 /**
  * Quick action handlers
  */
-export function playTimeout() {
+export function playTimeout(triggerBtn) {
   const timeoutTracks = allTracks.filter(
     (t) => t.category === 'timeout' || t.suffix === '_TIMEOUT' || /_TIMEOUT$/i.test(stripExtension(t.name))
   );
   const track = pickLeastPlayedRandomTrack(timeoutTracks);
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-timeout');
+      if (btn) setActiveTriggerButton(btn);
+    }
     handlePlayTrack(track);
   } else {
+    clearActiveTriggerButton();
     console.warn('Keine Timeout-Tracks vorhanden');
   }
 }
 
-export function playWalkOn() {
+export function playWalkOn(triggerBtn) {
   const walkonTracks = allTracks.filter(
     (t) => t.category === 'walkon' || t.suffix === '_WALKON' || /_(?:WALKON|EINLAUF)$/i.test(stripExtension(t.name))
   );
   const track = pickLeastPlayedRandomTrack(walkonTracks);
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-walkon');
+      if (btn) setActiveTriggerButton(btn);
+    }
     handlePlayTrack(track);
   } else {
+    clearActiveTriggerButton();
     console.warn('Keine Walk-On Tracks vorhanden');
   }
 }
 
-export function playPauseSlot(slotIndex) {
+export function playPauseSlot(slotIndex, triggerBtn) {
   const pauseTracks = allTracks.filter(
     (t) => t.category === 'pause' || /_PAUSE\d*$/i.test(t.suffix || '') || /_(?:PAUSE\d*|PAUSENSONG)$/i.test(stripExtension(t.name))
   );
@@ -477,15 +537,28 @@ export function playPauseSlot(slotIndex) {
     track = pauseTracks[slotIndex - 1];
   }
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById(`btn-pause-${slotIndex}`);
+      if (btn) setActiveTriggerButton(btn);
+    }
     showPauseOverlay(track);
     handlePlayTrack(track);
   } else if (pauseTracks.length > 0) {
     const fallback = pickLeastPlayedRandomTrack(pauseTracks);
     if (fallback) {
+      if (triggerBtn) {
+        setActiveTriggerButton(triggerBtn);
+      } else if (typeof document !== 'undefined') {
+        const btn = document.getElementById(`btn-pause-${slotIndex}`);
+        if (btn) setActiveTriggerButton(btn);
+      }
       showPauseOverlay(fallback);
       handlePlayTrack(fallback);
     }
   } else {
+    clearActiveTriggerButton();
     console.warn(`Kein Pausensong für Slot ${slotIndex} vorhanden`);
   }
 }
@@ -529,14 +602,21 @@ export function hidePauseOverlay() {
   }, 300);
 }
 
-export function playSixSeven() {
+export function playSixSeven(triggerBtn) {
   const sixSevenTracks = allTracks.filter(
     (t) => t.category === 'sixseven' || t.suffix === '_SIXSEVEN' || /_(?:SIXSEVEN|67)$/i.test(stripExtension(t.name))
   );
   const track = pickLeastPlayedRandomTrack(sixSevenTracks);
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-sixseven');
+      if (btn) setActiveTriggerButton(btn);
+    }
     handlePlayTrack(track);
   } else {
+    clearActiveTriggerButton();
     console.warn('Keine 6/7 Tracks vorhanden');
   }
 }
@@ -608,57 +688,86 @@ export function triggerBlockAnimation() {
 }
 
 
-export function playAce() {
+export function playAce(triggerBtn) {
   triggerAceAnimation();
   const aceTracks = allTracks.filter(
     (t) => t.suffix === '_ACE' || /_ACE$/i.test(stripExtension(t.name))
   );
   const track = pickLeastPlayedRandomTrack(aceTracks);
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-ace');
+      if (btn) setActiveTriggerButton(btn);
+    }
     handlePlayTrack(track);
   } else {
+    clearActiveTriggerButton();
     console.warn('Keine Ass-Tracks (_ACE) vorhanden');
   }
 }
 
-export function playBlock() {
+export function playBlock(triggerBtn) {
   triggerBlockAnimation();
   const blockTracks = allTracks.filter(
     (t) => t.category === 'block' || t.suffix === '_BLOCK' || /_BLOCK$/i.test(stripExtension(t.name))
   );
   const track = pickLeastPlayedRandomTrack(blockTracks);
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-block');
+      if (btn) setActiveTriggerButton(btn);
+    }
     handlePlayTrack(track);
   } else {
+    clearActiveTriggerButton();
     console.warn('Keine Block-Tracks (_BLOCK) vorhanden');
   }
 }
 
 
-export function playRandomOwn() {
+export function playRandomOwn(triggerBtn) {
   const ownTracks = allTracks.filter((t) =>
     ['ass_angriff', 'sonstiges', 'sonstiges_1', 'sonstiges_2', 'sonstiges_3'].includes(t.category)
   );
   const track = pickLeastPlayedRandomTrack(ownTracks);
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-random-own');
+      if (btn) setActiveTriggerButton(btn);
+    }
     handlePlayTrack(track);
   } else {
+    clearActiveTriggerButton();
     console.warn('Keine Tracks für eigene Punkte vorhanden');
   }
 }
 
-export function playRandomOpponent() {
+export function playRandomOpponent(triggerBtn) {
   const opponentTracks = allTracks.filter((t) => t.category === 'gegner');
   const track = pickLeastPlayedRandomTrack(opponentTracks);
   if (track) {
+    if (triggerBtn) {
+      setActiveTriggerButton(triggerBtn);
+    } else if (typeof document !== 'undefined') {
+      const btn = document.getElementById('btn-random-opponent');
+      if (btn) setActiveTriggerButton(btn);
+    }
     handlePlayTrack(track);
   } else {
+    clearActiveTriggerButton();
     console.warn('Keine Tracks für Gegnerpunkte vorhanden');
   }
 }
 
 export function stopAudio() {
   hidePauseOverlay();
+  clearActiveTriggerButton();
   audioEngine.stop(2000);
 }
 
@@ -827,10 +936,12 @@ export function setupEventListeners() {
   audioEngine.onTrackStop = () => {
     updatePlayingUI(null);
     hidePauseOverlay();
+    clearActiveTriggerButton();
   };
   audioEngine.onTrackEnd = () => {
     updatePlayingUI(null);
     hidePauseOverlay();
+    clearActiveTriggerButton();
   };
 
   // One-time user gesture listener to acquire wake lock on first interaction
@@ -975,6 +1086,7 @@ export function setupEventListeners() {
         const trackId = btn.getAttribute('data-track-id');
         const track = allTracks.find((t) => t.id === trackId);
         if (track) {
+          setActiveTriggerButton(btn);
           handlePlayTrack(track);
         }
       }
@@ -990,6 +1102,7 @@ export function setupEventListeners() {
         const trackId = btn.getAttribute('data-track-id');
         const track = allTracks.find((t) => t.id === trackId);
         if (track) {
+          setActiveTriggerButton(btn);
           handlePlayTrack(track);
         }
       }
@@ -998,60 +1111,108 @@ export function setupEventListeners() {
 
   // Desktop Footer Bar Quick Actions
   const btnTimeout = document.getElementById('btn-timeout');
-  if (btnTimeout) btnTimeout.addEventListener('click', playTimeout);
+  if (btnTimeout) btnTimeout.addEventListener('click', () => {
+    setActiveTriggerButton(btnTimeout);
+    playTimeout(btnTimeout);
+  });
 
   const btnWalkon = document.getElementById('btn-walkon');
-  if (btnWalkon) btnWalkon.addEventListener('click', playWalkOn);
+  if (btnWalkon) btnWalkon.addEventListener('click', () => {
+    setActiveTriggerButton(btnWalkon);
+    playWalkOn(btnWalkon);
+  });
 
   for (let slot = 1; slot <= 4; slot++) {
     const slotBtn = document.getElementById(`btn-pause-${slot}`);
     if (slotBtn) {
-      slotBtn.addEventListener('click', () => playPauseSlot(slot));
+      slotBtn.addEventListener('click', () => {
+        setActiveTriggerButton(slotBtn);
+        playPauseSlot(slot, slotBtn);
+      });
     }
   }
 
   const btnSixseven = document.getElementById('btn-sixseven');
-  if (btnSixseven) btnSixseven.addEventListener('click', playSixSeven);
+  if (btnSixseven) btnSixseven.addEventListener('click', () => {
+    setActiveTriggerButton(btnSixseven);
+    playSixSeven(btnSixseven);
+  });
 
   const btnAce = document.getElementById('btn-ace');
-  if (btnAce) btnAce.addEventListener('click', playAce);
+  if (btnAce) btnAce.addEventListener('click', () => {
+    setActiveTriggerButton(btnAce);
+    playAce(btnAce);
+  });
 
   const btnBlock = document.getElementById('btn-block');
-  if (btnBlock) btnBlock.addEventListener('click', playBlock);
+  if (btnBlock) btnBlock.addEventListener('click', () => {
+    setActiveTriggerButton(btnBlock);
+    playBlock(btnBlock);
+  });
 
   const btnRandomOwn = document.getElementById('btn-random-own');
-  if (btnRandomOwn) btnRandomOwn.addEventListener('click', playRandomOwn);
+  if (btnRandomOwn) btnRandomOwn.addEventListener('click', () => {
+    setActiveTriggerButton(btnRandomOwn);
+    playRandomOwn(btnRandomOwn);
+  });
 
   const btnRandomOpponent = document.getElementById('btn-random-opponent');
-  if (btnRandomOpponent) btnRandomOpponent.addEventListener('click', playRandomOpponent);
+  if (btnRandomOpponent) btnRandomOpponent.addEventListener('click', () => {
+    setActiveTriggerButton(btnRandomOpponent);
+    playRandomOpponent(btnRandomOpponent);
+  });
 
   const btnStop = document.getElementById('btn-stop');
   if (btnStop) btnStop.addEventListener('click', stopAudio);
 
   // Mobile Pad Quick Actions
   const btnMobileTimeout = document.getElementById('btn-mobile-timeout');
-  if (btnMobileTimeout) btnMobileTimeout.addEventListener('click', playTimeout);
+  if (btnMobileTimeout) btnMobileTimeout.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobileTimeout);
+    playTimeout(btnMobileTimeout);
+  });
 
   const btnMobileWalkon = document.getElementById('btn-mobile-walkon');
-  if (btnMobileWalkon) btnMobileWalkon.addEventListener('click', playWalkOn);
+  if (btnMobileWalkon) btnMobileWalkon.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobileWalkon);
+    playWalkOn(btnMobileWalkon);
+  });
 
   const btnMobilePause = document.getElementById('btn-mobile-pause');
-  if (btnMobilePause) btnMobilePause.addEventListener('click', () => playPauseSlot(1));
+  if (btnMobilePause) btnMobilePause.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobilePause);
+    playPauseSlot(1, btnMobilePause);
+  });
 
   const btnMobileSixseven = document.getElementById('btn-mobile-sixseven');
-  if (btnMobileSixseven) btnMobileSixseven.addEventListener('click', playSixSeven);
+  if (btnMobileSixseven) btnMobileSixseven.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobileSixseven);
+    playSixSeven(btnMobileSixseven);
+  });
 
   const btnMobileAce = document.getElementById('btn-mobile-ace');
-  if (btnMobileAce) btnMobileAce.addEventListener('click', playAce);
+  if (btnMobileAce) btnMobileAce.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobileAce);
+    playAce(btnMobileAce);
+  });
 
   const btnMobileBlock = document.getElementById('btn-mobile-block');
-  if (btnMobileBlock) btnMobileBlock.addEventListener('click', playBlock);
+  if (btnMobileBlock) btnMobileBlock.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobileBlock);
+    playBlock(btnMobileBlock);
+  });
 
   const btnMobileRandomOwn = document.getElementById('btn-mobile-random-own');
-  if (btnMobileRandomOwn) btnMobileRandomOwn.addEventListener('click', playRandomOwn);
+  if (btnMobileRandomOwn) btnMobileRandomOwn.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobileRandomOwn);
+    playRandomOwn(btnMobileRandomOwn);
+  });
 
   const btnMobileRandomOpponent = document.getElementById('btn-mobile-random-opponent');
-  if (btnMobileRandomOpponent) btnMobileRandomOpponent.addEventListener('click', playRandomOpponent);
+  if (btnMobileRandomOpponent) btnMobileRandomOpponent.addEventListener('click', () => {
+    setActiveTriggerButton(btnMobileRandomOpponent);
+    playRandomOpponent(btnMobileRandomOpponent);
+  });
 
   const btnMobileStop = document.getElementById('btn-mobile-stop');
   if (btnMobileStop) btnMobileStop.addEventListener('click', stopAudio);

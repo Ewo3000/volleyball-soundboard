@@ -784,10 +784,16 @@ header.header,
 .song-btn.playing,
 .track-btn.is-playing,
 .track-btn.playing,
+.quick-btn.is-playing,
+.quick-btn.playing,
+.mobile-quick-btn.is-playing,
+.mobile-quick-btn.playing,
+.pause-slot-btn.is-playing,
+.pause-slot-btn.playing,
 [data-playing="true"] {
   background: #172554 !important;
   border-color: #60A5FA !important;
-  animation: pulse-playing-glow 1.4s infinite ease-in-out;
+  animation: pulse-playing-glow 1.4s infinite ease-in-out !important;
   color: #EFF6FF !important;
   z-index: 2;
 }

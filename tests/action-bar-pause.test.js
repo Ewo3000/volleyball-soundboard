@@ -69,3 +69,37 @@ test('showPauseOverlay and hidePauseOverlay manipulate DOM elements correctly', 
   }
 });
 
+test('css applies pulse-playing-glow to quick-btn and mobile-quick-btn when is-playing', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.quick-btn\.is-playing[\s\S]*?pulse-playing-glow/);
+});
+
+test('setActiveTriggerButton and clearActiveTriggerButton manage active trigger state', async () => {
+  const { setActiveTriggerButton, clearActiveTriggerButton } = await import('../js/app.js');
+  assert.equal(typeof setActiveTriggerButton, 'function');
+  assert.equal(typeof clearActiveTriggerButton, 'function');
+
+  const btn = {
+    classList: {
+      classes: new Set(),
+      add(...cs) { cs.forEach((c) => this.classes.add(c)); },
+      remove(...cs) { cs.forEach((c) => this.classes.delete(c)); },
+      contains(c) { return this.classes.has(c); }
+    },
+    attributes: {},
+    setAttribute(k, v) { this.attributes[k] = v; },
+    removeAttribute(k) { delete this.attributes[k]; },
+    getAttribute(k) { return this.attributes[k]; }
+  };
+
+  setActiveTriggerButton(btn);
+  assert.ok(btn.classList.contains('is-playing'));
+  assert.ok(btn.classList.contains('playing'));
+  assert.equal(btn.getAttribute('data-playing'), 'true');
+
+  clearActiveTriggerButton();
+  assert.ok(!btn.classList.contains('is-playing'));
+  assert.ok(!btn.classList.contains('playing'));
+  assert.equal(btn.getAttribute('data-playing'), undefined);
+});
+
