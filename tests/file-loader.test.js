@@ -23,23 +23,35 @@ test('cleanTrackTitle strips extension, suffix, and replaces underscores', () =>
 });
 
 test('detectCategory maps all suffixes correctly', () => {
+  assert.equal(detectCategory('Song_ACE.mp3').category, 'ass_angriff');
+  assert.equal(detectCategory('Song_ACE.mp3').suffix, '_ACE');
   assert.equal(detectCategory('Song_HIT.mp3').category, 'ass_angriff');
   assert.equal(detectCategory('Song_ANGRIFF.mp3').category, 'ass_angriff');
   assert.equal(detectCategory('Song_ASS.mp3').category, 'ass_angriff');
   assert.equal(detectCategory('Song_BLOCK.mp3').category, 'block');
+  assert.equal(detectCategory('Song_OPP.mp3').category, 'gegner');
+  assert.equal(detectCategory('Song_OPP.mp3').suffix, '_OPP');
   assert.equal(detectCategory('Song_GEGNER.mp3').category, 'gegner');
   assert.equal(detectCategory('Song_OPPONENT.mp3').category, 'gegner');
-  assert.equal(detectCategory('Song_SONSTIGES1.mp3').category, 'sonstiges_1');
-  assert.equal(detectCategory('Song_MISC1.mp3').category, 'sonstiges_1');
-  assert.equal(detectCategory('Song_SONSTIGES2.mp3').category, 'sonstiges_2');
-  assert.equal(detectCategory('Song_MISC2.mp3').category, 'sonstiges_2');
-  assert.equal(detectCategory('Song_SONSTIGES3.mp3').category, 'sonstiges_3');
-  assert.equal(detectCategory('Song_MISC3.mp3').category, 'sonstiges_3');
+  assert.equal(detectCategory('Song_SONSTIGES1.mp3').category, 'sonstiges');
+  assert.equal(detectCategory('Song_MISC1.mp3').category, 'sonstiges');
+  assert.equal(detectCategory('Song_SONSTIGES2.mp3').category, 'sonstiges');
+  assert.equal(detectCategory('Song_MISC2.mp3').category, 'sonstiges');
+  assert.equal(detectCategory('Song_SONSTIGES3.mp3').category, 'sonstiges');
+  assert.equal(detectCategory('Song_MISC3.mp3').category, 'sonstiges');
   assert.equal(detectCategory('Song_FUN.mp3').category, 'spass_extras');
   assert.equal(detectCategory('Song_SPASS.mp3').category, 'spass_extras');
   assert.equal(detectCategory('Song_TIMEOUT.mp3').category, 'timeout');
   assert.equal(detectCategory('Song_WALKON.mp3').category, 'walkon');
   assert.equal(detectCategory('Song_EINLAUF.mp3').category, 'walkon');
+  assert.equal(detectCategory('Song_PAUSE1.mp3').category, 'pause');
+  assert.equal(detectCategory('Song_PAUSE1.mp3').suffix, '_PAUSE1');
+  assert.equal(detectCategory('Song_PAUSE2.mp3').category, 'pause');
+  assert.equal(detectCategory('Song_PAUSE2.mp3').suffix, '_PAUSE2');
+  assert.equal(detectCategory('Song_PAUSE3.mp3').category, 'pause');
+  assert.equal(detectCategory('Song_PAUSE3.mp3').suffix, '_PAUSE3');
+  assert.equal(detectCategory('Song_PAUSE4.mp3').category, 'pause');
+  assert.equal(detectCategory('Song_PAUSE4.mp3').suffix, '_PAUSE4');
   assert.equal(detectCategory('Song_PAUSE.mp3').category, 'pause');
   assert.equal(detectCategory('Song_PAUSENSONG.mp3').category, 'pause');
   assert.equal(detectCategory('Song_SIXSEVEN.mp3').category, 'sixseven');
@@ -47,8 +59,8 @@ test('detectCategory maps all suffixes correctly', () => {
   // Case-insensitive test
   assert.equal(detectCategory('Song_hit.mp3').category, 'ass_angriff');
   assert.equal(detectCategory('Song_block.mp3').category, 'block');
-  // Fallback
-  assert.equal(detectCategory('Unknown_Tune.mp3').category, 'sonstiges_1');
+  // Fallback for suffix-less
+  assert.equal(detectCategory('Unknown_Tune.mp3').category, 'sonstiges');
   assert.equal(detectCategory('Unknown_Tune.mp3').suffix, '');
 });
 
@@ -76,7 +88,7 @@ test('parseTrackFromFilename creates properly formatted Track object', () => {
   const defaultTrack = parseTrackFromFilename('Simple.mp3');
   assert.equal(defaultTrack.blob, null);
   assert.equal(defaultTrack.type, 'audio/mpeg');
-  assert.equal(defaultTrack.category, 'sonstiges_1');
+  assert.equal(defaultTrack.category, 'sonstiges');
   assert.equal(defaultTrack.suffix, '');
 });
 

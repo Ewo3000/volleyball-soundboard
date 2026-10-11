@@ -9,6 +9,7 @@ import {
   getAllTracks,
   updateTrackPlayCount,
   resetAllPlayCounts,
+  clearAllTracks,
   saveSetting,
   getSetting
 } from './db.js';
@@ -84,6 +85,7 @@ export function createTrackButtonHtml(track) {
  * Renders all 7 soundboard columns
  */
 export function renderColumns() {
+  if (typeof document === 'undefined') return;
   for (const catId of COLUMN_IDS) {
     const colElement = document.getElementById(`col-tracks-${catId}`);
     const tracksForCat = categorized.get(catId) || [];
@@ -111,11 +113,16 @@ export function renderColumns() {
  * Renders the modal drawer for mobile view and full search
  */
 export function renderDrawer() {
+  if (typeof document === 'undefined') return;
   const drawerContent = document.getElementById('drawer-content');
   if (!drawerContent) return;
 
   const categoriesToRender = [
-    ...COLUMN_IDS,
+    'ass_angriff',
+    'block',
+    'gegner',
+    'sonstiges',
+    'spass_extras',
     'timeout',
     'walkon',
     'pause',
@@ -150,14 +157,18 @@ export function renderDrawer() {
  * Updates status badge and pause slot button labels
  */
 export function updatePauseSlotsUI() {
+  if (typeof document === 'undefined') return;
   const pauseTracks = allTracks.filter(
-    (t) => t.category === 'pause' || t.suffix === '_PAUSE' || /_(?:PAUSE|PAUSENSONG)$/i.test(stripExtension(t.name))
+    (t) => t.category === 'pause' || /_PAUSE\d*$/i.test(t.suffix || '') || /_(?:PAUSE\d*|PAUSENSONG)$/i.test(stripExtension(t.name))
   );
 
   for (let slot = 1; slot <= 4; slot++) {
     const btn = document.getElementById(`btn-pause-${slot}`);
     if (!btn) continue;
-    const track = pauseTracks[slot - 1];
+    let track = pauseTracks.find((t) => (t.suffix || '').toUpperCase() === `_PAUSE${slot}`);
+    if (!track) {
+      track = pauseTracks[slot - 1];
+    }
     if (track) {
       btn.title = `Pausensong ${slot}: ${track.cleanTitle}`;
       btn.setAttribute('data-track-id', track.id);
@@ -174,6 +185,7 @@ export function updatePauseSlotsUI() {
  * Updates status badge in header banner
  */
 export function updateStatusBadge() {
+  if (typeof document === 'undefined') return;
   const trackCountStatus = document.getElementById('track-count-status');
   if (trackCountStatus) {
     if (allTracks.length === 0) {
@@ -205,6 +217,7 @@ export function renderAll() {
  * Updates DOM playing indicators
  */
 export function updatePlayingUI(trackId) {
+  if (typeof document === 'undefined') return;
   const allSongButtons = document.querySelectorAll('.song-btn, .track-btn');
   allSongButtons.forEach((btn) => {
     if (trackId && btn.getAttribute('data-track-id') === trackId) {
@@ -232,6 +245,7 @@ export function updatePlayingUI(trackId) {
  * Updates play count badges in DOM
  */
 export function updateTrackDOMPlayCount(trackId, count) {
+  if (typeof document === 'undefined') return;
   const matchingButtons = document.querySelectorAll(`[data-track-id="${trackId}"]`);
   matchingButtons.forEach((btn) => {
     btn.classList.add('has-played');
@@ -271,10 +285,19 @@ export function filterTracks(query) {
   currentSearchQuery = (query || '').trim().toLowerCase();
   const searchResultsBadge = document.getElementById('search-results-badge');
   const allSongButtons = document.querySelectorAll('.song-btn, .track-btn');
+  const btnSearchClear = document.getElementById('btn-search-clear');
+  const btnDrawerSearchClear = document.getElementById('btn-drawer-search-clear');
+
+  if (btnSearchClear) {
+    btnSearchClear.style.display = currentSearchQuery ? 'flex' : 'none';
+  }
+  if (btnDrawerSearchClear) {
+    btnDrawerSearchClear.style.display = currentSearchQuery ? 'flex' : 'none';
+  }
 
   if (!currentSearchQuery) {
     allSongButtons.forEach((btn) => {
-      btn.classList.remove('search-dimmed', 'dimmed', 'search-highlighted', 'highlighted');
+      btn.classList.remove('search-dimmed', 'dimmed', 'search-highlighted', 'highlighted', 'search-hidden');
     });
     if (searchResultsBadge) {
       searchResultsBadge.textContent = '0 Treffer';
@@ -290,14 +313,14 @@ export function filterTracks(query) {
     const trackName = (track?.name || '').toLowerCase();
 
     if (titleText.includes(currentSearchQuery) || trackName.includes(currentSearchQuery)) {
-      btn.classList.remove('search-dimmed', 'dimmed');
+      btn.classList.remove('search-dimmed', 'dimmed', 'search-hidden');
       btn.classList.add('search-highlighted', 'highlighted');
       if (trackId) {
         matchedTrackIds.add(trackId);
       }
     } else {
       btn.classList.remove('search-highlighted', 'highlighted');
-      btn.classList.add('search-dimmed', 'dimmed');
+      btn.classList.add('search-dimmed', 'dimmed', 'search-hidden');
     }
   });
 
@@ -435,9 +458,12 @@ export function playWalkOn() {
 
 export function playPauseSlot(slotIndex) {
   const pauseTracks = allTracks.filter(
-    (t) => t.category === 'pause' || t.suffix === '_PAUSE' || /_(?:PAUSE|PAUSENSONG)$/i.test(stripExtension(t.name))
+    (t) => t.category === 'pause' || /_PAUSE\d*$/i.test(t.suffix || '') || /_(?:PAUSE\d*|PAUSENSONG)$/i.test(stripExtension(t.name))
   );
-  const track = pauseTracks[slotIndex - 1];
+  let track = pauseTracks.find((t) => (t.suffix || '').toUpperCase() === `_PAUSE${slotIndex}`);
+  if (!track) {
+    track = pauseTracks[slotIndex - 1];
+  }
   if (track) {
     handlePlayTrack(track);
   } else if (pauseTracks.length > 0) {
@@ -460,9 +486,21 @@ export function playSixSeven() {
   }
 }
 
+export function playAce() {
+  const aceTracks = allTracks.filter(
+    (t) => t.suffix === '_ACE' || /_ACE$/i.test(stripExtension(t.name))
+  );
+  const track = pickLeastPlayedRandomTrack(aceTracks);
+  if (track) {
+    handlePlayTrack(track);
+  } else {
+    console.warn('Keine Ass-Tracks (_ACE) vorhanden');
+  }
+}
+
 export function playRandomOwn() {
   const ownTracks = allTracks.filter((t) =>
-    ['ass_angriff', 'sonstiges_1', 'sonstiges_2', 'sonstiges_3'].includes(t.category)
+    ['ass_angriff', 'sonstiges', 'sonstiges_1', 'sonstiges_2', 'sonstiges_3'].includes(t.category)
   );
   const track = pickLeastPlayedRandomTrack(ownTracks);
   if (track) {
@@ -483,7 +521,45 @@ export function playRandomOpponent() {
 }
 
 export function stopAudio() {
-  audioEngine.stop(300);
+  audioEngine.stop(1000);
+}
+
+export async function handleClearAll() {
+  const confirmed = typeof confirm === 'function'
+    ? confirm('Möchtest du wirklich alle Songs aus der Liste entfernen?')
+    : true;
+  if (!confirmed) return;
+
+  await clearAllTracks();
+  allTracks = [];
+  renderAll();
+}
+
+export async function handleCheckUpdate() {
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+        if (reg.waiting) {
+          alert('Ein neues Update ist verfügbar! Die App wird neu geladen.');
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          if (typeof window !== 'undefined' && window.location) {
+            window.location.reload();
+          }
+        } else {
+          alert('App ist auf dem neuesten Stand (keine Updates verfügbar).');
+        }
+      } else {
+        alert('Kein Service Worker aktiv.');
+      }
+    } catch (err) {
+      console.warn('Update check failed:', err);
+      alert('Fehler bei der Update-Prüfung: ' + (err.message || err));
+    }
+  } else {
+    alert('Service Worker wird von diesem Browser nicht unterstützt.');
+  }
 }
 
 /**
@@ -492,6 +568,7 @@ export function stopAudio() {
 export async function processSelectedFiles(fileList) {
   if (!fileList || fileList.length === 0) return;
   const newTracks = [];
+  const existingNames = new Set(allTracks.map((t) => (t.name || '').toLowerCase()));
 
   for (let i = 0; i < fileList.length; i++) {
     const file = fileList[i];
@@ -500,6 +577,12 @@ export async function processSelectedFiles(fileList) {
       /\.(mp3|wav|ogg|m4a|aac|flac|wma)$/i.test(file.name);
 
     if (!isAudio) continue;
+
+    const lowerName = file.name.toLowerCase();
+    if (existingNames.has(lowerName)) {
+      continue;
+    }
+    existingNames.add(lowerName);
 
     const track = parseTrackFromFilename(file.name, file, file.type);
     newTracks.push(track);
@@ -517,9 +600,13 @@ export async function processSelectedFiles(fileList) {
  */
 export async function loadDemoSoundpack() {
   const demoTracks = createDemoSoundpack();
-  await saveTracks(demoTracks);
-  allTracks = await getAllTracks();
-  renderAll();
+  const existingNames = new Set(allTracks.map((t) => (t.name || '').toLowerCase()));
+  const tracksToAdd = demoTracks.filter((t) => !existingNames.has((t.name || '').toLowerCase()));
+  if (tracksToAdd.length > 0) {
+    await saveTracks(tracksToAdd);
+    allTracks = await getAllTracks();
+    renderAll();
+  }
   return allTracks;
 }
 
@@ -554,25 +641,34 @@ export function setupEventListeners() {
   const btnZoomOut = document.getElementById('zoom-out');
   if (btnZoomOut) btnZoomOut.addEventListener('click', () => applyZoom(currentZoom - 5));
 
-  // Search inputs
+  // Search inputs & clear buttons
   const searchInput = document.getElementById('search-input');
   const drawerSearchInput = document.getElementById('drawer-search-input');
+  const btnSearchClear = document.getElementById('btn-search-clear');
+  const btnDrawerSearchClear = document.getElementById('btn-drawer-search-clear');
+
+  const onSearchInput = (val) => {
+    if (searchInput && searchInput.value !== val) searchInput.value = val;
+    if (drawerSearchInput && drawerSearchInput.value !== val) drawerSearchInput.value = val;
+    filterTracks(val);
+  };
 
   if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      if (drawerSearchInput) drawerSearchInput.value = val;
-      filterTracks(val);
-    });
+    searchInput.addEventListener('input', (e) => onSearchInput(e.target.value));
   }
 
   if (drawerSearchInput) {
-    drawerSearchInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      if (searchInput) searchInput.value = val;
-      filterTracks(val);
-    });
+    drawerSearchInput.addEventListener('input', (e) => onSearchInput(e.target.value));
   }
+
+  const clearSearch = () => {
+    if (searchInput) searchInput.value = '';
+    if (drawerSearchInput) drawerSearchInput.value = '';
+    filterTracks('');
+  };
+
+  if (btnSearchClear) btnSearchClear.addEventListener('click', clearSearch);
+  if (btnDrawerSearchClear) btnDrawerSearchClear.addEventListener('click', clearSearch);
 
   // Master Volume slider
   const volumeSlider = document.getElementById('volume-slider');
@@ -590,6 +686,18 @@ export function setupEventListeners() {
   const btnResetCounts = document.getElementById('btn-reset-counts');
   if (btnResetCounts) {
     btnResetCounts.addEventListener('click', handleResetCounts);
+  }
+
+  // Clear all tracks button
+  const btnClearAll = document.getElementById('btn-clear-all');
+  if (btnClearAll) {
+    btnClearAll.addEventListener('click', handleClearAll);
+  }
+
+  // Check update button
+  const btnCheckUpdate = document.getElementById('btn-check-update');
+  if (btnCheckUpdate) {
+    btnCheckUpdate.addEventListener('click', handleCheckUpdate);
   }
 
   // Fullscreen button
@@ -697,6 +805,9 @@ export function setupEventListeners() {
   const btnSixseven = document.getElementById('btn-sixseven');
   if (btnSixseven) btnSixseven.addEventListener('click', playSixSeven);
 
+  const btnAce = document.getElementById('btn-ace');
+  if (btnAce) btnAce.addEventListener('click', playAce);
+
   const btnRandomOwn = document.getElementById('btn-random-own');
   if (btnRandomOwn) btnRandomOwn.addEventListener('click', playRandomOwn);
 
@@ -718,6 +829,9 @@ export function setupEventListeners() {
 
   const btnMobileSixseven = document.getElementById('btn-mobile-sixseven');
   if (btnMobileSixseven) btnMobileSixseven.addEventListener('click', playSixSeven);
+
+  const btnMobileAce = document.getElementById('btn-mobile-ace');
+  if (btnMobileAce) btnMobileAce.addEventListener('click', playAce);
 
   const btnMobileRandomOwn = document.getElementById('btn-mobile-random-own');
   if (btnMobileRandomOwn) btnMobileRandomOwn.addEventListener('click', playRandomOwn);

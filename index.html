@@ -62,6 +62,7 @@
           <div class="search-wrapper">
             <span class="search-icon">🔍</span>
             <input type="text" id="search-input" class="search-input" placeholder="Song suchen..." autocomplete="off">
+            <button type="button" class="btn-search-clear" id="btn-search-clear" title="Suche leeren" aria-label="Suche leeren" style="display: none;">✕</button>
             <span class="search-counter-badge" id="search-results-badge">0 Treffer</span>
           </div>
         </div>
@@ -75,6 +76,10 @@
           <button type="button" class="btn-header-tool btn-reset-counts" id="btn-reset-counts" title="Alle Play-Counts zurücksetzen">
             Reset
           </button>
+          <button type="button" class="btn-header-tool btn-clear-all" id="btn-clear-all" title="Alle Songs aus der Liste entfernen">
+            🗑 Leeren
+          </button>
+          <button type="button" class="btn-header-tool btn-check-update" id="btn-check-update" title="Nach App-Updates suchen" aria-label="Nach App-Updates suchen">🔄</button>
           <button type="button" class="btn-header-tool btn-fullscreen" id="btn-fullscreen" title="Vollbild umschalten">
             Vollbild
           </button>
@@ -122,7 +127,7 @@
         <!-- 4. Sonstiges 1 -->
         <section class="soundboard-column col-sonstiges-1" data-category="sonstiges_1">
           <div class="column-header">
-            <h2 class="column-title">Sonstiges 1</h2>
+            <h2 class="column-title">Sonstiges</h2>
             <span class="col-count">0</span>
           </div>
           <div class="column-tracks" id="col-tracks-sonstiges_1">
@@ -133,7 +138,7 @@
         <!-- 5. Sonstiges 2 -->
         <section class="soundboard-column col-sonstiges-2" data-category="sonstiges_2">
           <div class="column-header">
-            <h2 class="column-title">Sonstiges 2</h2>
+            <h2 class="column-title">Sonstiges</h2>
             <span class="col-count">0</span>
           </div>
           <div class="column-tracks" id="col-tracks-sonstiges_2">
@@ -144,7 +149,7 @@
         <!-- 6. Sonstiges 3 -->
         <section class="soundboard-column col-sonstiges-3" data-category="sonstiges_3">
           <div class="column-header">
-            <h2 class="column-title">Sonstiges 3</h2>
+            <h2 class="column-title">Sonstiges</h2>
             <span class="col-count">0</span>
           </div>
           <div class="column-tracks" id="col-tracks-sonstiges_3">
@@ -171,6 +176,9 @@
         </button>
 
         <div class="mobile-quick-grid">
+          <button type="button" class="mobile-quick-btn btn-ace" id="btn-mobile-ace" data-action="ace">
+            🏐 Ass (Eigenes Team)
+          </button>
           <button type="button" class="mobile-quick-btn btn-random-eigene" id="btn-mobile-random-own" data-action="random-eigene">
             ⚡ Eigene Punkte (Zufall)
           </button>
@@ -227,6 +235,9 @@
         <button type="button" class="quick-btn btn-sixseven" id="btn-sixseven" data-action="sixseven">
           6 / 7
         </button>
+        <button type="button" class="quick-btn btn-ace" id="btn-ace" data-action="ace" title="Ass (Eigenes Team)">
+          🏐 Ass (Eigenes Team)
+        </button>
         <button type="button" class="quick-btn btn-random-eigene" id="btn-random-own" data-action="random-eigene">
           Eigene Punkte (Zufall)
         </button>
@@ -248,6 +259,7 @@
         <h2 class="drawer-title">Alle Songs & Kategorien</h2>
         <div class="search-wrapper" style="max-width: 260px;">
           <input type="text" id="drawer-search-input" class="search-input" placeholder="Song suchen..." autocomplete="off">
+          <button type="button" class="btn-search-clear" id="btn-drawer-search-clear" title="Suche leeren" aria-label="Suche leeren" style="display: none;">✕</button>
         </div>
         <button type="button" class="btn-close-drawer" id="btn-close-drawer" aria-label="Schließen">
           ✕

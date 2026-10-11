@@ -165,4 +165,47 @@ test('filterTracks dedupes matched songs across grid and drawer', async () => {
   }
 });
 
+test('index.html contains clear-all and symbol-only check-update buttons', () => {
+  const content = fs.readFileSync(HTML_PATH, 'utf8');
+
+  assert.ok(content.includes('id="btn-clear-all"'), 'must contain #btn-clear-all');
+  assert.ok(content.includes('id="btn-check-update"'), 'must contain #btn-check-update');
+
+  // Verify #btn-check-update contains ONLY the symbol 🔄 without textual label
+  const btnUpdateMatch = content.match(/<button[^>]*id="btn-check-update"[^>]*>([\s\S]*?)<\/button>/i);
+  assert.ok(btnUpdateMatch, 'btn-check-update button tag found');
+  const innerText = btnUpdateMatch[1].trim();
+  assert.equal(innerText, '🔄', 'update button must contain strictly the symbol 🔄 without text');
+});
+
+test('index.html contains search clear buttons in top bar and drawer', () => {
+  const content = fs.readFileSync(HTML_PATH, 'utf8');
+
+  assert.ok(content.includes('id="btn-search-clear"'), 'must contain #btn-search-clear');
+  assert.ok(content.includes('id="btn-drawer-search-clear"'), 'must contain #btn-drawer-search-clear');
+});
+
+test('index.html contains Ass (Eigenes Team) quick button in desktop and mobile', () => {
+  const content = fs.readFileSync(HTML_PATH, 'utf8');
+
+  assert.ok(content.includes('id="btn-ace"'), 'must contain desktop #btn-ace');
+  assert.ok(content.includes('id="btn-mobile-ace"'), 'must contain mobile #btn-mobile-ace');
+  assert.ok(content.includes('Ass (Eigenes Team)'), 'must have label Ass (Eigenes Team)');
+});
+
+test('index.html columns for Sonstiges are all titled "Sonstiges"', () => {
+  const content = fs.readFileSync(HTML_PATH, 'utf8');
+
+  // Verify that Sonstiges 1, 2, 3 sections have <h2 class="column-title">Sonstiges</h2>
+  const col1Match = content.includes('data-category="sonstiges_1"');
+  const col2Match = content.includes('data-category="sonstiges_2"');
+  const col3Match = content.includes('data-category="sonstiges_3"');
+  assert.ok(col1Match && col2Match && col3Match, 'all 3 sonstiges columns must exist');
+
+  // Should NOT contain "Sonstiges 1", "Sonstiges 2" or "Sonstiges 3" as titles
+  assert.ok(!content.includes('<h2 class="column-title">Sonstiges 1</h2>'), 'column-title must not be Sonstiges 1');
+  assert.ok(!content.includes('<h2 class="column-title">Sonstiges 2</h2>'), 'column-title must not be Sonstiges 2');
+  assert.ok(!content.includes('<h2 class="column-title">Sonstiges 3</h2>'), 'column-title must not be Sonstiges 3');
+});
+
 

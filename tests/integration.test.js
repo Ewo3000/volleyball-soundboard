@@ -12,7 +12,7 @@ test('createDemoSoundpack produces valid tracks with WAV binary data', () => {
   const tracks = createDemoSoundpack();
 
   assert.equal(Array.isArray(tracks), true, 'must return an array of tracks');
-  assert.equal(tracks.length, 15, 'must return exactly 15 demo tracks');
+  assert.equal(tracks.length, 18, 'must return exactly 18 demo tracks');
 
   for (const track of tracks) {
     assert.ok(track.id && typeof track.id === 'string', 'track must have an id');
@@ -20,7 +20,7 @@ test('createDemoSoundpack produces valid tracks with WAV binary data', () => {
     assert.ok(track.name && track.name.endsWith('.wav'), 'track name must end with .wav');
     assert.ok(track.cleanTitle && track.cleanTitle.length > 0, 'track must have cleanTitle');
     assert.ok(CATEGORY_DEFS[track.category], `category ${track.category} must be in CATEGORY_DEFS`);
-    assert.ok(track.suffix && track.suffix.startsWith('_'), 'track must have parsed suffix');
+    assert.ok(typeof track.suffix === 'string', 'track must have suffix string');
     assert.equal(track.playCount, 0, 'initial playCount must be 0');
     assert.equal(track.lastPlayed, 0, 'initial lastPlayed must be 0');
     assert.equal(track.type, 'audio/wav', 'track type must be audio/wav');
@@ -83,17 +83,17 @@ test('all quick actions have tracks from demo soundpack', () => {
     (key) => CATEGORY_DEFS[key].type === 'quick'
   );
 
-  assert.equal(quickCategories.length, 4, 'must define 4 quick action categories');
-  assert.deepEqual(quickCategories, ['timeout', 'walkon', 'pause', 'sixseven']);
+  assert.equal(quickCategories.length, 5, 'must define 5 quick action categories');
+  assert.deepEqual(quickCategories, ['ace', 'timeout', 'walkon', 'pause', 'sixseven']);
 
   for (const catId of quickCategories) {
     const list = categorized.get(catId);
     assert.ok(list && list.length > 0, `Quick action "${catId}" must have at least 1 track`);
   }
 
-  // Specifically check Pausensongs: should have at least 2 tracks for pause slots
+  // Specifically check Pausensongs: should have at least 4 tracks for the 4 pause slots
   const pauseTracks = categorized.get('pause');
-  assert.ok(pauseTracks.length >= 2, 'Pausensongs should contain at least 2 tracks for pause slots');
+  assert.ok(pauseTracks.length >= 4, 'Pausensongs should contain at least 4 tracks for pause slots');
 });
 
 test('pickLeastPlayedRandomTrack works across demo soundpack categories', () => {
@@ -126,12 +126,12 @@ test('storing and retrieving demo tracks from MemoryStorageEngine', async () => 
   await engine.saveTracks(demoTracks);
 
   const storedTracks = await engine.getAllTracks();
-  assert.equal(storedTracks.length, 15, 'storage engine must store all 15 demo tracks');
+  assert.equal(storedTracks.length, 18, 'storage engine must store all 18 demo tracks');
 
   // Verify deduplication on re-saving demo soundpack
   await engine.saveTracks(createDemoSoundpack());
   const dedupedTracks = await engine.getAllTracks();
-  assert.equal(dedupedTracks.length, 15, 're-saving demo soundpack must update existing tracks without accumulating duplicates');
+  assert.equal(dedupedTracks.length, 18, 're-saving demo soundpack must update existing tracks without accumulating duplicates');
 
   // Verify track play count update
   const sampleTrack = storedTracks[0];
@@ -217,8 +217,8 @@ test('loadDemoSoundpack in js/app.js persists to storage and updates UI state', 
 
   try {
     const loaded = await loadDemoSoundpack();
-    assert.equal(loaded.length, 15, 'loadDemoSoundpack should return 15 tracks');
-    assert.equal(mockElements.get('track-count-status').textContent, '15 Songs geladen');
+    assert.equal(loaded.length, 18, 'loadDemoSoundpack should return 18 tracks');
+    assert.equal(mockElements.get('track-count-status').textContent, '18 Songs geladen');
   } finally {
     globalThis.document = originalDoc;
     globalThis.window = originalWindow;

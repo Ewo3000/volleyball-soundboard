@@ -7,7 +7,8 @@
 import { parseTrackFromFilename, stripExtension } from './file-loader.js';
 
 export const DEMO_TRACK_DEFINITIONS = [
-  // 1. Ass / Angriff (HIT)
+  // 1. Ass / Angriff (HIT & ACE)
+  { filename: 'Ace_Winner_ACE.wav', freq: 659.25, duration: 0.5 },
   { filename: 'Super_Spike_HIT.wav', freq: 587.33, duration: 0.5 },
   { filename: 'Drop_That_Low_HIT.wav', freq: 293.66, duration: 0.6 },
 
@@ -15,20 +16,16 @@ export const DEMO_TRACK_DEFINITIONS = [
   { filename: 'Monster_Block_BLOCK.wav', freq: 440.00, duration: 0.5 },
   { filename: 'Axel_F_BLOCK.wav', freq: 523.25, duration: 0.6 },
 
-  // 3. Gegner (GEGNER)
-  { filename: 'Gegner_Pause_GEGNER.wav', freq: 349.23, duration: 0.7 },
-  { filename: 'Durchatmen_GEGNER.wav', freq: 392.00, duration: 0.8 },
+  // 3. Gegner (OPP)
+  { filename: 'Gegner_Fehler_OPP.wav', freq: 349.23, duration: 0.7 },
+  { filename: 'Durchatmen_OPP.wav', freq: 392.00, duration: 0.8 },
 
-  // 4. Sonstiges 1 (SONSTIGES1)
-  { filename: 'Perfekte_Welle_SONSTIGES1.wav', freq: 659.25, duration: 0.6 },
+  // 4. Sonstiges (ohne Suffix - verteilt sich gleichmäßig auf Spalten 1, 2 und 3)
+  { filename: 'Perfekte_Welle.wav', freq: 523.25, duration: 0.6 },
+  { filename: 'Samba_De_Janeiro.wav', freq: 698.46, duration: 0.6 },
+  { filename: 'Seven_Nation_Army.wav', freq: 493.88, duration: 0.7 },
 
-  // 5. Sonstiges 2 (SONSTIGES2)
-  { filename: 'Samba_SONSTIGES2.wav', freq: 698.46, duration: 0.6 },
-
-  // 6. Sonstiges 3 (SONSTIGES3)
-  { filename: 'Seven_Nation_Army_SONSTIGES3.wav', freq: 493.88, duration: 0.7 },
-
-  // 7. Spaß & Extras (FUN)
+  // 5. Spaß & Extras (FUN)
   { filename: 'Ned_schlecht_FUN.wav', freq: 880.00, duration: 0.5 },
 
   // Quick Actions:
@@ -38,9 +35,11 @@ export const DEMO_TRACK_DEFINITIONS = [
   // Walk-On (WALKON)
   { filename: 'Einlauf_Hymne_WALKON.wav', freq: 523.25, duration: 1.0 },
 
-  // Pausensongs (PAUSE)
-  { filename: 'Satzpause_Blue_PAUSE.wav', freq: 329.63, duration: 1.0 },
-  { filename: 'Satzpause_Summer_PAUSE.wav', freq: 369.99, duration: 1.0 },
+  // Pausensongs (PAUSE1 - PAUSE4)
+  { filename: 'Satzpause_Eins_PAUSE1.wav', freq: 329.63, duration: 0.8 },
+  { filename: 'Satzpause_Zwei_PAUSE2.wav', freq: 369.99, duration: 0.8 },
+  { filename: 'Satzpause_Drei_PAUSE3.wav', freq: 392.00, duration: 0.8 },
+  { filename: 'Satzpause_Vier_PAUSE4.wav', freq: 440.00, duration: 0.8 },
 
   // 6/7 Quick Action (SIXSEVEN)
   { filename: 'Seven_Hype_SIXSEVEN.wav', freq: 659.25, duration: 0.7 }

@@ -3,16 +3,20 @@
  */
 
 export const CATEGORY_DEFS = {
-  // Main columns
+  // Main columns (7 tablet landscape columns)
   ass_angriff: { id: 'ass_angriff', label: 'Ass / Angriff', color: 'blue', type: 'column' },
   block: { id: 'block', label: 'Block', color: 'magenta', type: 'column' },
   gegner: { id: 'gegner', label: 'Gegner', color: 'red', type: 'column' },
-  sonstiges_1: { id: 'sonstiges_1', label: 'Sonstiges 1', color: 'emerald', type: 'column' },
-  sonstiges_2: { id: 'sonstiges_2', label: 'Sonstiges 2', color: 'emerald', type: 'column' },
-  sonstiges_3: { id: 'sonstiges_3', label: 'Sonstiges 3', color: 'emerald', type: 'column' },
+  sonstiges_1: { id: 'sonstiges_1', label: 'Sonstiges', color: 'emerald', type: 'column' },
+  sonstiges_2: { id: 'sonstiges_2', label: 'Sonstiges', color: 'emerald', type: 'column' },
+  sonstiges_3: { id: 'sonstiges_3', label: 'Sonstiges', color: 'emerald', type: 'column' },
   spass_extras: { id: 'spass_extras', label: 'Spaß & Extras', color: 'purple', type: 'column' },
 
+  // Unified Sonstiges category for drawer / general grouping
+  sonstiges: { id: 'sonstiges', label: 'Sonstiges', color: 'emerald', type: 'general' },
+
   // Quick actions
+  ace: { id: 'ace', label: 'Ass (Eigenes Team)', color: 'blue', type: 'quick' },
   timeout: { id: 'timeout', label: 'Timeout', color: 'amber', type: 'quick' },
   walkon: { id: 'walkon', label: 'Walk-On', color: 'blue', type: 'quick' },
   pause: { id: 'pause', label: 'Pausensongs', color: 'slate', type: 'quick' },
@@ -20,15 +24,18 @@ export const CATEGORY_DEFS = {
 };
 
 const SUFFIX_RULES = [
+  { regex: /_ACE$/i, category: 'ass_angriff', suffix: '_ACE' },
   { regex: /_(?:HIT|ANGRIFF|ASS)$/i, category: 'ass_angriff', suffix: '_HIT' },
   { regex: /_BLOCK$/i, category: 'block', suffix: '_BLOCK' },
-  { regex: /_(?:GEGNER|OPPONENT)$/i, category: 'gegner', suffix: '_GEGNER' },
-  { regex: /_(?:SONSTIGES1|MISC1)$/i, category: 'sonstiges_1', suffix: '_SONSTIGES1' },
-  { regex: /_(?:SONSTIGES2|MISC2)$/i, category: 'sonstiges_2', suffix: '_SONSTIGES2' },
-  { regex: /_(?:SONSTIGES3|MISC3)$/i, category: 'sonstiges_3', suffix: '_SONSTIGES3' },
+  { regex: /_(?:OPP|GEGNER|OPPONENT)$/i, category: 'gegner', suffix: '_OPP' },
+  { regex: /_(?:SONSTIGES\d*|MISC\d*)$/i, category: 'sonstiges', suffix: '_SONSTIGES' },
   { regex: /_(?:FUN|SPASS)$/i, category: 'spass_extras', suffix: '_FUN' },
   { regex: /_TIMEOUT$/i, category: 'timeout', suffix: '_TIMEOUT' },
   { regex: /_(?:WALKON|EINLAUF)$/i, category: 'walkon', suffix: '_WALKON' },
+  { regex: /_PAUSE1$/i, category: 'pause', suffix: '_PAUSE1' },
+  { regex: /_PAUSE2$/i, category: 'pause', suffix: '_PAUSE2' },
+  { regex: /_PAUSE3$/i, category: 'pause', suffix: '_PAUSE3' },
+  { regex: /_PAUSE4$/i, category: 'pause', suffix: '_PAUSE4' },
   { regex: /_(?:PAUSE|PAUSENSONG)$/i, category: 'pause', suffix: '_PAUSE' },
   { regex: /_(?:SIXSEVEN|67)$/i, category: 'sixseven', suffix: '_SIXSEVEN' }
 ];
@@ -48,7 +55,7 @@ export function detectCategory(filename) {
       return { category: rule.category, suffix: rule.suffix };
     }
   }
-  return { category: 'sonstiges_1', suffix: '' };
+  return { category: 'sonstiges', suffix: '' };
 }
 
 export function cleanTrackTitle(filename) {
@@ -87,12 +94,48 @@ export function categorizeTracks(tracks) {
     map.set(key, []);
   }
 
-  for (const track of tracks) {
-    const list = map.get(track.category) || map.get('sonstiges_1');
-    list.push(track);
+  // Sort all tracks alphabetically
+  const sortedTracks = [...tracks].sort((a, b) =>
+    a.cleanTitle.localeCompare(b.cleanTitle, 'de', { sensitivity: 'base' })
+  );
+
+  // Round-robin distribution for all Sonstiges / suffix-less tracks across columns 1, 2, and 3
+  const miscColumns = ['sonstiges_1', 'sonstiges_2', 'sonstiges_3'];
+  let miscIndex = 0;
+
+  for (const track of sortedTracks) {
+    const isMisc =
+      track.category === 'sonstiges' ||
+      track.category === 'no_suffix' ||
+      (!track.suffix && (!track.category || track.category.startsWith('sonstiges')));
+
+    if (isMisc) {
+      track.category = 'sonstiges';
+      const targetCol = miscColumns[miscIndex % 3];
+      miscIndex++;
+      track.assignedCategory = targetCol;
+
+      map.get('sonstiges').push(track);
+      map.get(targetCol).push(track);
+    } else {
+      const target = map.has(track.category) ? track.category : 'sonstiges';
+      if (target === 'sonstiges') {
+        track.category = 'sonstiges';
+        const targetCol = miscColumns[miscIndex % 3];
+        miscIndex++;
+        track.assignedCategory = targetCol;
+        map.get('sonstiges').push(track);
+        map.get(targetCol).push(track);
+      } else {
+        map.get(target).push(track);
+        if (track.suffix === '_ACE' && map.has('ace')) {
+          map.get('ace').push(track);
+        }
+      }
+    }
   }
 
-  // Sort tracks alphabetically inside each category
+  // Ensure individual category arrays are sorted
   for (const [key, list] of map.entries()) {
     list.sort((a, b) => a.cleanTitle.localeCompare(b.cleanTitle, 'de', { sensitivity: 'base' }));
   }
