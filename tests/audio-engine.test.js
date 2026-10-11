@@ -138,7 +138,10 @@ test('AudioEngine plays track with Web Audio API mock and handles lifecycle', as
   globalThis.AudioContext = MockAudioContext;
   if (!globalThis.URL) globalThis.URL = {};
   const origCreateObjectURL = globalThis.URL.createObjectURL;
+  const origRevokeObjectURL = globalThis.URL.revokeObjectURL;
+  const revokedUrls = [];
   globalThis.URL.createObjectURL = (blob) => `blob:mock-url-${blob}`;
+  globalThis.URL.revokeObjectURL = (url) => { revokedUrls.push(url); };
 
   try {
     const engine = new AudioEngine();
@@ -163,12 +166,24 @@ test('AudioEngine plays track with Web Audio API mock and handles lifecycle', as
     assert.equal(engine.getCurrentTrack(), track2);
     assert.equal(startedTrack, track2);
 
-    // Test volume update affects current audio element
+    // Test volume update affects masterGain without quadratic double-scaling on audio element
     engine.setMasterVolume(0.7);
-    assert.equal(engine.currentAudioElement.volume, 0.7);
+    assert.equal(engine.getMasterVolume(), 0.7);
+    assert.equal(engine.currentAudioElement.volume, 1.0, 'audio element volume must remain 1.0 to avoid quadratic attenuation');
 
-    // Test stop
+    // Test volume update fallback when Web Audio is not present
+    const fallbackEngine = new AudioEngine();
+    fallbackEngine.currentAudioElement = new MockAudio('https://example.com/fallback.mp3');
+    fallbackEngine.setMasterVolume(0.4);
+    assert.equal(fallbackEngine.currentAudioElement.volume, 0.4);
+
+    // Test stop clears onended callback to prevent race conditions
+    const trackRace = { id: 'trace', cleanTitle: 'Race Track', url: 'https://example.com/race.mp3' };
+    await engine.playTrack(trackRace);
+    const raceAudio = engine.currentAudioElement;
+    assert.ok(raceAudio.onended !== null);
     engine.stop(0);
+    assert.equal(raceAudio.onended, null, 'audio.onended must be cleared immediately in stop()');
     assert.equal(engine.getCurrentTrack(), null);
     assert.equal(stoppedTrack, true);
 
@@ -179,10 +194,26 @@ test('AudioEngine plays track with Web Audio API mock and handles lifecycle', as
     audioEl.onended();
     assert.equal(engine.getCurrentTrack(), null);
     assert.equal(endedTrack, track3);
+
+    // Test object URL revoking on track swap and on stop
+    const blobTrack1 = { id: 'b1', cleanTitle: 'Blob 1', blob: new Uint8Array([1, 2, 3]) };
+    await engine.playTrack(blobTrack1);
+    const blob1Url = engine.currentObjectUrl;
+    assert.ok(blob1Url);
+
+    const blobTrack2 = { id: 'b2', cleanTitle: 'Blob 2', blob: new Uint8Array([4, 5, 6]) };
+    await engine.playTrack(blobTrack2);
+    assert.ok(revokedUrls.includes(blob1Url), 'blob 1 URL should be revoked when swapping');
+
+    const blob2Url = engine.currentObjectUrl;
+    engine.stop(0);
+    assert.ok(revokedUrls.includes(blob2Url), 'blob 2 URL should be revoked when stopping');
+    assert.equal(engine.currentObjectUrl, null);
   } finally {
     globalThis.Audio = originalAudio;
     globalThis.AudioContext = originalAudioContext;
     globalThis.URL.createObjectURL = origCreateObjectURL;
+    globalThis.URL.revokeObjectURL = origRevokeObjectURL;
   }
 });
 

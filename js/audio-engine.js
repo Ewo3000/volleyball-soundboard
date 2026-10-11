@@ -34,6 +34,7 @@ export class AudioEngine {
     this.currentTrackGain = null;
     this.currentAudioElement = null;
     this.currentTrack = null;
+    this.currentObjectUrl = null;
     this.volume = 1.0;
 
     this.onTrackStart = null;
@@ -64,8 +65,7 @@ export class AudioEngine {
     this.volume = Math.max(0, Math.min(1, val));
     if (this.masterGain && this.audioCtx) {
       this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
-    }
-    if (this.currentAudioElement) {
+    } else if (this.currentAudioElement) {
       this.currentAudioElement.volume = this.volume;
     }
   }
@@ -92,12 +92,14 @@ export class AudioEngine {
       let objectUrl;
       if (typeof Blob !== 'undefined' && track.blob instanceof Blob) {
         objectUrl = URL.createObjectURL(track.blob);
+        this.currentObjectUrl = objectUrl;
       } else if (
         (typeof ArrayBuffer !== 'undefined' && track.blob instanceof ArrayBuffer) ||
         (typeof Uint8Array !== 'undefined' && track.blob instanceof Uint8Array)
       ) {
         const blob = new Blob([track.blob], { type: track.type || 'audio/mpeg' });
         objectUrl = URL.createObjectURL(blob);
+        this.currentObjectUrl = objectUrl;
       } else if (track.url) {
         objectUrl = track.url;
       } else {
@@ -134,6 +136,12 @@ export class AudioEngine {
       }
 
       audio.onended = () => {
+        if (this.currentObjectUrl) {
+          if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+            URL.revokeObjectURL(this.currentObjectUrl);
+          }
+          this.currentObjectUrl = null;
+        }
         const finishedTrack = this.currentTrack;
         this.currentTrack = null;
         this.currentAudioElement = null;
@@ -149,12 +157,25 @@ export class AudioEngine {
       }
     } catch (err) {
       console.error('Failed to play track:', err);
+      if (this.currentObjectUrl) {
+        if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+          URL.revokeObjectURL(this.currentObjectUrl);
+        }
+        this.currentObjectUrl = null;
+      }
       this.currentTrack = null;
       throw err;
     }
   }
 
   stop(fadeDurationMs = 300) {
+    if (this.currentObjectUrl) {
+      if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(this.currentObjectUrl);
+      }
+      this.currentObjectUrl = null;
+    }
+
     if (!this.currentAudioElement) {
       this.currentTrack = null;
       if (this.onTrackStop) this.onTrackStop();
@@ -162,6 +183,7 @@ export class AudioEngine {
     }
 
     const audio = this.currentAudioElement;
+    audio.onended = null;
     const trackGain = this.currentTrackGain;
     const audioCtx = this.audioCtx;
 

@@ -16,7 +16,7 @@ test('createDemoSoundpack produces valid tracks with WAV binary data', () => {
 
   for (const track of tracks) {
     assert.ok(track.id && typeof track.id === 'string', 'track must have an id');
-    assert.ok(track.id.startsWith('track_'), 'track id should start with track_');
+    assert.ok(track.id.startsWith('demo_'), 'track id should start with demo_');
     assert.ok(track.name && track.name.endsWith('.wav'), 'track name must end with .wav');
     assert.ok(track.cleanTitle && track.cleanTitle.length > 0, 'track must have cleanTitle');
     assert.ok(CATEGORY_DEFS[track.category], `category ${track.category} must be in CATEGORY_DEFS`);
@@ -127,6 +127,11 @@ test('storing and retrieving demo tracks from MemoryStorageEngine', async () => 
 
   const storedTracks = await engine.getAllTracks();
   assert.equal(storedTracks.length, 15, 'storage engine must store all 15 demo tracks');
+
+  // Verify deduplication on re-saving demo soundpack
+  await engine.saveTracks(createDemoSoundpack());
+  const dedupedTracks = await engine.getAllTracks();
+  assert.equal(dedupedTracks.length, 15, 're-saving demo soundpack must update existing tracks without accumulating duplicates');
 
   // Verify track play count update
   const sampleTrack = storedTracks[0];

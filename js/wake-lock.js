@@ -11,6 +11,8 @@ export class WakeLockManager {
   }
 
   async requestLock() {
+    if (this.isActive()) return true;
+
     if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) {
       return false;
     }

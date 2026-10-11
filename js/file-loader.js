@@ -54,7 +54,10 @@ export function detectCategory(filename) {
 export function cleanTrackTitle(filename) {
   let baseName = stripExtension(filename);
   for (const rule of SUFFIX_RULES) {
-    baseName = baseName.replace(rule.regex, '');
+    if (rule.regex.test(baseName)) {
+      baseName = baseName.replace(rule.regex, '');
+      break;
+    }
   }
   // Replace underscores and multiple spaces with a single space
   return baseName.replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();

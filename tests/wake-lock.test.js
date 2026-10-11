@@ -124,6 +124,8 @@ test('WakeLockManager handles external release event on sentinel', async () => {
 });
 
 test('WakeLockManager handles request rejection gracefully', async () => {
+  const origWarn = console.warn;
+  console.warn = () => {};
   try {
     Object.defineProperty(globalThis.navigator, 'wakeLock', {
       value: {
@@ -140,6 +142,7 @@ test('WakeLockManager handles request rejection gracefully', async () => {
     assert.equal(acquired, false);
     assert.equal(manager.isActive(), false);
   } finally {
+    console.warn = origWarn;
     delete globalThis.navigator.wakeLock;
   }
 });
@@ -218,6 +221,8 @@ test('WakeLockManager re-requests lock on visibilitychange to visible', async ()
 });
 
 test('WakeLockManager respects enabled flag and release error handling', async () => {
+  const origWarn = console.warn;
+  console.warn = () => {};
   let requested = false;
   try {
     Object.defineProperty(globalThis.navigator, 'wakeLock', {
@@ -251,6 +256,42 @@ test('WakeLockManager respects enabled flag and release error handling', async (
     // release error should not throw
     await manager.releaseLock();
     assert.equal(manager.isActive(), false);
+  } finally {
+    console.warn = origWarn;
+    delete globalThis.navigator.wakeLock;
+  }
+});
+
+test('WakeLockManager requestLock is idempotent when already active', async () => {
+  let requestCalls = 0;
+  const mockSentinel = {
+    released: false,
+    addEventListener() {},
+    async release() { this.released = true; }
+  };
+
+  try {
+    Object.defineProperty(globalThis.navigator, 'wakeLock', {
+      value: {
+        async request() {
+          requestCalls++;
+          return mockSentinel;
+        }
+      },
+      configurable: true,
+      writable: true
+    });
+
+    const manager = new WakeLockManager();
+    const first = await manager.requestLock();
+    assert.equal(first, true);
+    assert.equal(requestCalls, 1);
+    assert.equal(manager.isActive(), true);
+
+    // Second call should return true immediately without calling navigator.wakeLock.request
+    const second = await manager.requestLock();
+    assert.equal(second, true);
+    assert.equal(requestCalls, 1, 'request() should not be called again when already active');
   } finally {
     delete globalThis.navigator.wakeLock;
   }

@@ -122,6 +122,11 @@ test('CATEGORY_DEFS contains expected categories and quick actions', () => {
   assert.equal(CATEGORY_DEFS.sonstiges_3.type, 'column');
   assert.equal(CATEGORY_DEFS.spass_extras.type, 'column');
 
+  // Verify emerald color for sonstiges columns
+  assert.equal(CATEGORY_DEFS.sonstiges_1.color, 'emerald');
+  assert.equal(CATEGORY_DEFS.sonstiges_2.color, 'emerald');
+  assert.equal(CATEGORY_DEFS.sonstiges_3.color, 'emerald');
+
   assert.equal(CATEGORY_DEFS.timeout.type, 'quick');
   assert.equal(CATEGORY_DEFS.walkon.type, 'quick');
   assert.equal(CATEGORY_DEFS.pause.type, 'quick');

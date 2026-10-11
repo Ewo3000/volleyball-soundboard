@@ -4,7 +4,7 @@
  * Generates minimal 8-bit mono PCM WAV buffers to provide instant out-of-the-box sounds.
  */
 
-import { parseTrackFromFilename } from './file-loader.js';
+import { parseTrackFromFilename, stripExtension } from './file-loader.js';
 
 export const DEMO_TRACK_DEFINITIONS = [
   // 1. Ass / Angriff (HIT)
@@ -115,6 +115,8 @@ export function createDemoSoundpack() {
       ? new Blob([wavBytes], { type: 'audio/wav' })
       : wavBytes;
 
-    return parseTrackFromFilename(def.filename, blob, 'audio/wav');
+    const track = parseTrackFromFilename(def.filename, blob, 'audio/wav');
+    track.id = 'demo_' + stripExtension(def.filename);
+    return track;
   });
 }

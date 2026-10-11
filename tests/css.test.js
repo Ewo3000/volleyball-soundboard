@@ -47,4 +47,5 @@ test('css/app.css defines touch ergonomics, active playing glow, and zoom contai
   assert.ok(content.includes('user-select: none') || content.includes('user-select:none'), 'must specify user-select: none');
   assert.ok(content.includes('@keyframes'), 'must define keyframes animation for playing pulse/glow');
   assert.ok(content.includes('transform-origin'), 'must configure zoom container transform-origin');
+  assert.ok(content.includes('overflow-x: auto') || content.includes('overflow-x:auto'), 'must allow horizontal scroll/pan for zoomed board-container');
 });
