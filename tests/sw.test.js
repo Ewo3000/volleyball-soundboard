@@ -53,9 +53,12 @@ test('service worker install event caches app shell and skips waiting', async ()
     }
   };
 
+  const cacheNameMatch = code.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+  const currentCacheName = cacheNameMatch ? cacheNameMatch[1] : 'sv1845-dj-v1';
+
   const mockCaches = {
     open: async (name) => {
-      assert.equal(name, 'sv1845-dj-v1');
+      assert.equal(name, currentCacheName);
       return mockCache;
     }
   };
@@ -109,15 +112,18 @@ test('service worker activate event deletes old caches and claims clients', asyn
 
   const listeners = {};
   let claimCalled = false;
+  const cacheNameMatch = code.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+  const currentCacheName = cacheNameMatch ? cacheNameMatch[1] : 'sv1845-dj-v1';
   const deletedCaches = [];
 
   const mockCaches = {
-    keys: async () => ['sv1845-dj-v1', 'sv1845-dj-v0-beta', 'old-cache-test'],
+    keys: async () => [currentCacheName, 'sv1845-dj-v0-beta', 'old-cache-test'],
     delete: async (name) => {
       deletedCaches.push(name);
       return true;
     }
   };
+
 
   const sandbox = {
     self: {
@@ -154,8 +160,9 @@ test('service worker activate event deletes old caches and claims clients', asyn
   await waitUntilPromise;
 
   assert.deepEqual(deletedCaches.sort(), ['old-cache-test', 'sv1845-dj-v0-beta'].sort());
-  assert.ok(!deletedCaches.includes('sv1845-dj-v1'), 'current cache must not be deleted');
+  assert.ok(!deletedCaches.includes(currentCacheName), 'current cache must not be deleted');
   assert.equal(claimCalled, true, 'clients.claim must be called during activate');
+
 });
 
 test('service worker fetch event performs cache-first lookup with fallback', async () => {

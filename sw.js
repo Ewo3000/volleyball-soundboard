@@ -1,14 +1,16 @@
 /**
  * SV 1845 Esslingen - Volleyball DJ Soundboard
  * Service Worker (sw.js) for 100% Offline PWA Capability
+ * Version: 1.3.0
  */
 
-const CACHE_NAME = 'sv1845-dj-v1';
+const CACHE_NAME = 'sv1845-dj-v1.3.0';
 
 const APP_SHELL_ASSETS = [
   './',
   'index.html',
   'manifest.webmanifest',
+  'version.json',
   'css/app.css',
   'js/app.js',
   'js/db.js',
@@ -18,6 +20,13 @@ const APP_SHELL_ASSETS = [
   'js/demo-sounds.js',
   'assets/logo.jpg'
 ];
+
+// Message Event: skip waiting on demand from client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 // Install Event: pre-caches critical app shell and activates immediately
 self.addEventListener('install', (event) => {
@@ -48,6 +57,14 @@ self.addEventListener('activate', (event) => {
 // Fetch Event: Cache-First strategy with network fallback
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Always fetch version.json from network first (so update checks are fresh)
+  if (event.request.url.includes('version.json')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request))
+    );
     return;
   }
 

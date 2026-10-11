@@ -547,32 +547,100 @@ export async function handleClearAll() {
   renderAll();
 }
 
+export const APP_VERSION = '1.3.0';
+
 export async function handleCheckUpdate() {
-  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) {
-        await reg.update();
-        if (reg.waiting) {
-          alert('Ein neues Update ist verfügbar! Die App wird neu geladen.');
-          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          if (typeof window !== 'undefined' && window.location) {
-            window.location.reload();
+  const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
+  if (updateBtn) {
+    updateBtn.classList.add('checking');
+    updateBtn.disabled = true;
+  }
+
+  try {
+    let remoteVersion = null;
+
+    // 1. Direct version.json check against server (bypasses any potential SW staleness)
+    if (typeof fetch === 'function') {
+      try {
+        const response = await fetch(`./version.json?_t=${Date.now()}`, {
+          cache: 'no-store'
+        });
+        if (response && response.ok) {
+          const data = await response.json();
+          if (data && data.version) {
+            remoteVersion = data.version;
           }
-        } else {
-          alert('App ist auf dem neuesten Stand (keine Updates verfügbar).');
         }
-      } else {
-        alert('Kein Service Worker aktiv.');
+      } catch (e) {
+        // Network error / offline
+        console.warn('Could not fetch version.json:', e);
       }
-    } catch (err) {
-      console.warn('Update check failed:', err);
+    }
+
+    // 2. Check Service Worker registration
+    let swUpdateFound = false;
+    let registration = null;
+
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      try {
+        registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          if (registration.waiting) {
+            swUpdateFound = true;
+          } else {
+            await registration.update();
+            if (registration.waiting || registration.installing) {
+              swUpdateFound = true;
+            }
+          }
+        }
+      } catch (swErr) {
+        console.warn('Service worker update check error:', swErr);
+      }
+    }
+
+    const versionDiffers = Boolean(remoteVersion && remoteVersion !== APP_VERSION);
+    const isUpdateAvailable = versionDiffers || swUpdateFound;
+
+    if (isUpdateAvailable) {
+      const newVerLabel = remoteVersion ? ` (Version ${remoteVersion})` : '';
+      const doReload = typeof confirm === 'function'
+        ? confirm(`Ein neues Update${newVerLabel} ist verfügbar!\n\nJetzt aktualisieren und neu laden?`)
+        : true;
+
+      if (doReload) {
+        if (registration?.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        if (typeof window !== 'undefined' && window.location && typeof window.location.reload === 'function') {
+          window.location.reload();
+        } else if (typeof location !== 'undefined' && typeof location.reload === 'function') {
+          location.reload();
+        }
+      }
+
+
+      return { updateAvailable: true, version: remoteVersion || 'new' };
+    } else {
+      if (typeof alert === 'function') {
+        alert(`Die App ist auf dem neuesten Stand (Version ${APP_VERSION}).`);
+      }
+      return { updateAvailable: false, version: APP_VERSION };
+    }
+  } catch (err) {
+    console.error('Update check failed:', err);
+    if (typeof alert === 'function') {
       alert('Fehler bei der Update-Prüfung: ' + (err.message || err));
     }
-  } else {
-    alert('Service Worker wird von diesem Browser nicht unterstützt.');
+    return { updateAvailable: false, error: err };
+  } finally {
+    if (updateBtn) {
+      updateBtn.classList.remove('checking');
+      updateBtn.disabled = false;
+    }
   }
 }
+
 
 /**
  * Processes list of selected or dropped files
@@ -886,7 +954,7 @@ export function setupEventListeners() {
 export function registerServiceWorker() {
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     const register = () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch((err) => {
         console.warn('ServiceWorker registration failed:', err);
       });
     };

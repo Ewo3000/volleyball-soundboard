@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {
   detectCategory,
   categorizeTracks,
@@ -184,3 +185,45 @@ test('filterTracks adds .search-hidden to non-matching songs and updates clear b
     globalThis.document = originalDoc;
   }
 });
+
+test('handleCheckUpdate and APP_VERSION are defined and version.json is tracked', async () => {
+  const { handleCheckUpdate, APP_VERSION } = await import('../js/app.js');
+  assert.equal(typeof handleCheckUpdate, 'function', 'handleCheckUpdate must be exported');
+  assert.equal(typeof APP_VERSION, 'string', 'APP_VERSION must be exported');
+  assert.ok(fs.existsSync('version.json'), 'version.json must exist in project root');
+  const versionData = JSON.parse(fs.readFileSync('version.json', 'utf8'));
+  assert.equal(versionData.version, APP_VERSION, 'version.json version must match APP_VERSION');
+});
+
+test('handleCheckUpdate detects update when remote version.json differs', async () => {
+  const { handleCheckUpdate } = await import('../js/app.js');
+  const originalFetch = globalThis.fetch;
+  const originalAlert = globalThis.alert;
+  const originalConfirm = globalThis.confirm;
+  const originalLocation = globalThis.location;
+
+  let alertMessage = null;
+  let reloaded = false;
+
+  globalThis.alert = (msg) => { alertMessage = msg; };
+  globalThis.confirm = () => true;
+  globalThis.location = { reload: () => { reloaded = true; } };
+
+  // Mock fetch returning newer version
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({ version: '99.0.0', buildTime: '2026-10-11T99:99:99Z' })
+  });
+
+  try {
+    const result = await handleCheckUpdate();
+    assert.equal(result?.updateAvailable, true, 'must indicate update is available');
+    assert.equal(reloaded, true, 'must reload when user confirms update');
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.alert = originalAlert;
+    globalThis.confirm = originalConfirm;
+    globalThis.location = originalLocation;
+  }
+});
+

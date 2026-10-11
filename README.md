@@ -99,7 +99,7 @@ Die Schnellzugriffstasten passen sich dynamisch an die Gerätebreite an (ohne Ü
 - **🔊 Lautstärke-Regler:** Master-Lautstärke (0 % bis 100 %).
 - **Reset:** Setzt alle Abspielzähler auf 0 zurück (z. B. vor Spielbeginn).
 - **🗑 Leeren:** Entfernt alle geladenen Songs nach Bestätigung aus der Liste und dem lokalen Speicher.
-- **🔄 (Update-Prüfung):** Sucht sofort nach neuen Versionen der PWA über den Service Worker.
+- **🔄 (Update-Prüfung):** Sucht sofort nach neuen Versionen auf dem Server (über `version.json` und Service Worker). Rotiert während der Prüfung und lädt die App bei bestätigtem Update sofort neu.
 - **Vollbild:** Schaltet den Vollbildmodus des Tablets ein oder aus.
 
 ---
@@ -144,7 +144,7 @@ Die App benötigt keinen Server und besteht rein aus statischen Web-Dateien (HTM
 
 ## 🧪 Tests & Qualitätssicherung
 
-Die Anwendung verfügt über eine umfassende Test-Suite (75 automatisierte Tests):
+Die Anwendung verfügt über eine umfassende Test-Suite (77 automatisierte Tests):
 ```bash
 npm test
 ```
@@ -154,5 +154,5 @@ Getestet werden:
 - Duplikaterkennung und -vermeidung beim Importieren
 - Web Audio Pipeline, Lautstärkeskalierung und 2,0-Sekunden-Fade-Out bei STOP
 - Screen Wake Lock Erwerb und Reaktivierung
-- PWA Service Worker Cache-Strategie (100 % offline)
+- PWA Service Worker Cache-Strategie (100 % offline) und dynamische Update-Erkennung via `version.json`
 - Relative Pfade für fehlerfreies Hosting auf GitHub Pages
