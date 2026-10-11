@@ -731,12 +731,36 @@ export function setupEventListeners() {
 }
 
 /**
+ * Registers Service Worker for 100% Offline PWA capability
+ */
+export function registerServiceWorker() {
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    const register = () => {
+      navigator.serviceWorker.register('./sw.js').catch((err) => {
+        console.warn('ServiceWorker registration failed:', err);
+      });
+    };
+
+    if (typeof document !== 'undefined' && document.readyState === 'complete') {
+      register();
+    } else if (typeof window !== 'undefined') {
+      window.addEventListener('load', register);
+    } else {
+      register();
+    }
+  }
+}
+
+/**
  * Main Application Initialization
  */
 export async function initApp() {
   try {
     await initDB();
     allTracks = await getAllTracks();
+
+    // Register offline Service Worker
+    registerServiceWorker();
 
     // Load saved settings
     const savedVolume = await getSetting('volume', 100);
