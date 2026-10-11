@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-test('pause buttons are titled Pause 1 through Pause 4 and are laid out in 2×2 grid', () => {
+test('pause buttons are titled with coffee emoji ☕ Pause 1 through ☕ Pause 4', () => {
   const html = fs.readFileSync('index.html', 'utf8');
-  assert.match(html, /id="btn-pause-1"[\s\S]*?Pause 1/);
-  assert.match(html, /id="btn-pause-2"[\s\S]*?Pause 2/);
-  assert.match(html, /id="btn-pause-3"[\s\S]*?Pause 3/);
-  assert.match(html, /id="btn-pause-4"[\s\S]*?Pause 4/);
+  assert.match(html, /id="btn-pause-1"[\s\S]*?☕ Pause 1/);
+  assert.match(html, /id="btn-pause-2"[\s\S]*?☕ Pause 2/);
+  assert.match(html, /id="btn-pause-3"[\s\S]*?☕ Pause 3/);
+  assert.match(html, /id="btn-pause-4"[\s\S]*?☕ Pause 4/);
+});
 
+test('pause buttons are laid out in 2×2 grid with doubled min-width', () => {
   const css = fs.readFileSync('css/app.css', 'utf8');
   // Pause slots rendered as 2×2 grid
   assert.match(css, /\.pause-slots-group[\s\S]*?display:\s*grid/);
