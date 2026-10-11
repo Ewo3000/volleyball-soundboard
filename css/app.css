@@ -269,6 +269,30 @@ header.header,
   transform: translateY(1px);
 }
 
+.btn-load-demo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(30, 41, 59, 0.9);
+  color: var(--text-white);
+  border: 1px solid var(--border-glass);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.btn-load-demo:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--club-blue);
+  transform: translateY(-1px);
+}
+
+.btn-load-demo:active {
+  transform: translateY(1px);
+}
+
 /* Compact Control Strip (Always Visible or Minimized) */
 .header-controls,
 #header-controls {

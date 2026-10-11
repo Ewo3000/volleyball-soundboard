@@ -15,6 +15,7 @@ const APP_SHELL_ASSETS = [
   'js/file-loader.js',
   'js/audio-engine.js',
   'js/wake-lock.js',
+  'js/demo-sounds.js',
   'assets/logo.jpg'
 ];
 

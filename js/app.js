@@ -28,6 +28,7 @@ import {
 } from './audio-engine.js';
 
 import { WakeLockManager } from './wake-lock.js';
+import { createDemoSoundpack } from './demo-sounds.js';
 
 // Application State
 export const audioEngine = new AudioEngine();
@@ -512,6 +513,17 @@ export async function processSelectedFiles(fileList) {
 }
 
 /**
+ * Loads synthesized demo soundpack into storage and refreshes UI
+ */
+export async function loadDemoSoundpack() {
+  const demoTracks = createDemoSoundpack();
+  await saveTracks(demoTracks);
+  allTracks = await getAllTracks();
+  renderAll();
+  return allTracks;
+}
+
+/**
  * Initializes DOM listeners and UI bindings
  */
 export function setupEventListeners() {
@@ -597,6 +609,12 @@ export function setupEventListeners() {
       await processSelectedFiles(e.target.files);
       fileFolderInput.value = '';
     });
+  }
+
+  // Demo soundpack loader button
+  const btnLoadDemo = document.getElementById('btn-load-demo');
+  if (btnLoadDemo) {
+    btnLoadDemo.addEventListener('click', loadDemoSoundpack);
   }
 
   // Drag and drop overlay handlers on window
