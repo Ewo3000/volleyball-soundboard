@@ -13,8 +13,8 @@ test('pause buttons are titled Pause 1 through Pause 4 and are laid out in 2×2 
   // Pause slots rendered as 2×2 grid
   assert.match(css, /\.pause-slots-group[\s\S]*?display:\s*grid/);
   assert.match(css, /\.pause-slots-group[\s\S]*?grid-template-columns:\s*1fr 1fr/);
-  // Pause slot button min-width (now smaller since grid handles layout)
-  assert.match(css, /\.pause-slot-btn[\s\S]*?min-width:\s*clamp\(\s*[34][0-9]px/);
+  // Pause slot button min-width doubled to at least 88px
+  assert.match(css, /\.pause-slot-btn[\s\S]*?min-width:\s*clamp\(\s*88px/);
 });
 
 test('pause hourglass overlay exists in DOM and functions are exported in js/app.js', async () => {
@@ -132,4 +132,17 @@ test('css allows 3-line text wrapping for action buttons', () => {
   assert.match(css, /\.quick-btn[\s\S]*?white-space:\s*normal/);
   assert.match(css, /\.btn-main-text[\s\S]*?white-space:\s*normal/);
 });
+
+test('timeout and walk-on buttons have doubled min-width in stacked column', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.stacked-btn[\s\S]*?min-width:\s*clamp\(\s*120px/);
+});
+
+test('action buttons have +50% width via flex: 2.25', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.quick-btn[\s\S]*?flex:\s*2\.25/);
+  assert.match(css, /\.quick-btn[\s\S]*?min-width:\s*clamp\(\s*75px/);
+});
+
+
 

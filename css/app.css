@@ -886,8 +886,8 @@ footer.quick-actions {
   transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
   box-shadow: var(--shadow-sm);
   white-space: normal;
-  flex: 1.5 1 0px; /* 50% wider than base */
-  min-width: 0;
+  flex: 2.25 1 0px; /* +50% wider (from 1.5) */
+  min-width: clamp(75px, 8.5vw, 120px);
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
@@ -898,7 +898,7 @@ footer.quick-actions {
   height: clamp(50px, 6.5vh, 66px); /* ~half the bar height */
   flex: 1 1 auto;
   width: 100%;
-  min-width: clamp(60px, 7vw, 100px);
+  min-width: clamp(120px, 14vw, 200px);
 }
 
 .btn-main-text {
@@ -1023,7 +1023,7 @@ footer.quick-actions {
 }
 .pause-slot-btn {
   height: clamp(50px, 6.5vh, 66px); /* half the bar height — 2 rows fit */
-  min-width: clamp(44px, 5vw, 72px);
+  min-width: clamp(88px, 10vw, 144px);
   padding: 2px clamp(4px, 0.5vw, 10px);
   font-size: clamp(0.68rem, 0.82vw, 0.88rem);
   flex: unset; /* override .quick-btn flex — grid handles sizing */

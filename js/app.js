@@ -778,7 +778,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.7.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
