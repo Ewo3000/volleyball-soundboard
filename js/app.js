@@ -486,7 +486,75 @@ export function playSixSeven() {
   }
 }
 
+/**
+ * Triggers fullscreen fiery flame animation on Ace action
+ */
+export function triggerAceAnimation() {
+  if (typeof document === 'undefined') return null;
+  const overlay = document.getElementById('fx-overlay');
+  if (!overlay) return null;
+
+  overlay.innerHTML = '';
+
+  const container = document.createElement('div');
+  container.className = 'fx-flame-container fx-flame';
+  container.innerHTML = `
+    <div class="fx-flame-vignette"></div>
+    <div class="fx-flame-pillar pillar-1"></div>
+    <div class="fx-flame-pillar pillar-2"></div>
+    <div class="fx-flame-pillar pillar-3"></div>
+    <div class="fx-flame-pillar pillar-4"></div>
+    <div class="fx-flame-ball">🔥</div>
+    <div class="fx-flame-text">🔥 ASS! 🔥</div>
+  `;
+
+  overlay.appendChild(container);
+
+  setTimeout(() => {
+    container?.classList?.add('fx-fade-out');
+    setTimeout(() => {
+      container?.remove?.();
+    }, 400);
+  }, 1400);
+
+  return container;
+}
+
+/**
+ * Triggers fullscreen defense shield animation on Block action
+ */
+export function triggerBlockAnimation() {
+  if (typeof document === 'undefined') return null;
+  const overlay = document.getElementById('fx-overlay');
+  if (!overlay) return null;
+
+  overlay.innerHTML = '';
+
+  const container = document.createElement('div');
+  container.className = 'fx-shield-container fx-shield';
+  container.innerHTML = `
+    <div class="fx-shield-barrier"></div>
+    <div class="fx-shield-shockwave shockwave-1"></div>
+    <div class="fx-shield-shockwave shockwave-2"></div>
+    <div class="fx-shield-icon">🛡️</div>
+    <div class="fx-shield-text">🛡️ BLOCK! 🛡️</div>
+  `;
+
+  overlay.appendChild(container);
+
+  setTimeout(() => {
+    container?.classList?.add('fx-fade-out');
+    setTimeout(() => {
+      container?.remove?.();
+    }, 400);
+  }, 1400);
+
+  return container;
+}
+
+
 export function playAce() {
+  triggerAceAnimation();
   const aceTracks = allTracks.filter(
     (t) => t.suffix === '_ACE' || /_ACE$/i.test(stripExtension(t.name))
   );
@@ -499,6 +567,7 @@ export function playAce() {
 }
 
 export function playBlock() {
+  triggerBlockAnimation();
   const blockTracks = allTracks.filter(
     (t) => t.category === 'block' || t.suffix === '_BLOCK' || /_BLOCK$/i.test(stripExtension(t.name))
   );
@@ -509,6 +578,7 @@ export function playBlock() {
     console.warn('Keine Block-Tracks (_BLOCK) vorhanden');
   }
 }
+
 
 export function playRandomOwn() {
   const ownTracks = allTracks.filter((t) =>
@@ -547,7 +617,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.4.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;

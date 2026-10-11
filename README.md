@@ -9,7 +9,11 @@ Eine moderne, offline-fähige Web-App (PWA) als digitales DJ-Pult für Volleybal
 ## 🌟 Hauptfunktionen
 
 - **Speziell für Spieltage konzipiert:** Schneller Zugriff auf Einlaufmusik, Timeouts, Satzpausen, Asse, Block-Hits und Stimmungssongs während des Spiels.
-- **Tablets & Desktop (Querformat):** 7 übersichtliche Spalten mit dynamischer Skalierung (Zoom 70 % – 120 %) und responsiver Schnellzugriffsleiste mit automatischer Breitenanpassung, zweizeiliger Beschriftung und garantiertem Schutz vor Bildschirmüberlauf.
+- **Tablets & Desktop (Querformat):** 7 übersichtliche Spalten mit dynamischer Skalierung (Zoom 70 % – 120 %) und um 50 % vergrößerter Schnellzugriffsleiste nach oben mit automatischer Breitenanpassung, zweizeiliger Beschriftung und garantiertem Schutz vor Textüberstand.
+- **Spektakuläre Vollbild-Animationen:**
+  - 🔥 **Flammenanimation:** Schießt bei Tipp auf den "Ass"-Button über die gesamte Appoberfläche empor.
+  - 🛡️ **Schild-/Blockanimation:** Entfaltet bei Tipp auf den "Block"-Button eine wuchtige Abwehrbarriere und Schockwelle über den gesamten Bildschirm.
+  - Beide Effekte sind vollständig klicktransparent (`pointer-events: none`), sodass die Bedienung zu keinem Zeitpunkt blockiert wird.
 - **Smartphone-Modus (Hochformat):** Automatische Reduktion auf die Schnellzugriffstasten mit großem Daumen-Pad und einem Vollbild-Drawer ("Alle Songs & Kategorien").
 - **100 % Offline-fähig (PWA):** Ein Service Worker speichert die gesamte Anwendung im Browsercache. Funktioniert in jeder Sporthalle auch ohne Internetverbindung.
 - **Lokale IndexedDB-Persistenz:** Musikdateien (MP3, WAV, OGG, M4A, FLAC) und Zählerstände werden lokal im Speicher des Tablets/Browsers gespeichert und bleiben nach dem Neuladen erhalten.
@@ -81,9 +85,9 @@ Unterstriche im Dateinamen werden in der Oberfläche automatisch zu sauberen Lee
 - **■ STOP:** Beendet die aktuelle Wiedergabe mit einem sanften **2,0-Sekunden-Fadeout**.
 
 ### 3. Schnellzugriffsleiste (Footer)
-Die Schnellzugriffstasten passen sich dynamisch an die Gerätebreite an (ohne Überlauf). Längere Texte mit Klammern (z. B. "(Eigenes Team)", "(Zufall)") werden übersichtlich zweizeilig formatiert:
-- **🏐 Ass (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_ACE` ab (priorisiert noch ungespielte Asse).
-- **🛡️ Block (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_BLOCK` ab (priorisiert noch ungespielte Blocks).
+Die Schnellzugriffsleiste ist um **50 % nach oben vergrößert** für noch leichtere Treffsicherheit in hitzigen Spielsituationen. Sie passt sich dynamisch an die Gerätebreite an, und Texte werden mit `overflow: hidden` und `text-overflow: ellipsis` strikt vor Überstand geschützt. Längere Texte mit Klammern (z. B. "(Eigenes Team)", "(Zufall)") werden übersichtlich zweizeilig formatiert:
+- **🏐 Ass (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_ACE` ab (priorisiert noch ungespielte Asse) und zündet eine feurige **Vollbild-Flammenanimation** über die gesamte App.
+- **🛡️ Block (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_BLOCK` ab (priorisiert noch ungespielte Blocks) und entfacht eine wuchtige **Vollbild-Schild- und Schockwellen-Animation**.
 - **⚡ Eigene Punkte (Zufall):** Wählt per Zufall einen Titel aus *Ass / Angriff* oder *Sonstiges* aus.
 - **🛡 Gegnerpunkte (Zufall):** Wählt per Zufall einen Titel aus der Kategorie *Gegner* (`_OPP`).
 - **Timeout:** Spielt sofort einen Auszeit-Sound (`_TIMEOUT`).
@@ -144,7 +148,7 @@ Die App benötigt keinen Server und besteht rein aus statischen Web-Dateien (HTM
 
 ## 🧪 Tests & Qualitätssicherung
 
-Die Anwendung verfügt über eine umfassende Test-Suite (77 automatisierte Tests):
+Die Anwendung verfügt über eine umfassende Test-Suite (84 automatisierte Tests):
 ```bash
 npm test
 ```
@@ -153,6 +157,8 @@ Getestet werden:
 - Gleichmäßige Round-Robin-Verteilung der Songs ohne Suffix auf Sonstiges 1, 2 und 3
 - Duplikaterkennung und -vermeidung beim Importieren
 - Web Audio Pipeline, Lautstärkeskalierung und 2,0-Sekunden-Fade-Out bei STOP
+- 50 % vergrößerte Aktionsleiste, responsives Layout und strikter Schutz vor Textüberstand
+- Vollbild-Animationen für Ass (Flammen) und Block (Schild) inkl. Klicktransparenz
 - Screen Wake Lock Erwerb und Reaktivierung
 - PWA Service Worker Cache-Strategie (100 % offline) und dynamische Update-Erkennung via `version.json`
 - Relative Pfade für fehlerfreies Hosting auf GitHub Pages

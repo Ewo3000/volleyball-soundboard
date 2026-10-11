@@ -549,7 +549,7 @@ header.header,
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
-  padding: 10px 12px 96px 12px; /* Bottom padding keeps space for 80px fixed footer */
+  padding: 10px 12px 136px 12px; /* Bottom padding keeps space for 50% larger fixed footer */
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -839,14 +839,14 @@ footer.quick-actions {
   background: rgba(11, 15, 23, 0.96);
   border-top: 1px solid var(--border-glass);
   backdrop-filter: blur(16px);
-  padding: 6px clamp(4px, 1vw, 12px);
+  padding: 8px clamp(4px, 1vw, 12px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: clamp(4px, 0.6vw, 10px);
   z-index: 500;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.7);
-  min-height: clamp(60px, 8vh, 76px);
+  min-height: clamp(90px, 12vh, 114px); /* 50% larger upwards than original 60-76px */
 }
 
 /* Quick Action Grouping */
@@ -859,8 +859,8 @@ footer.quick-actions {
 }
 
 .quick-btn {
-  height: clamp(48px, 6.5vh, 64px);
-  padding: 4px clamp(4px, 0.7vw, 12px);
+  height: clamp(72px, 10vh, 96px); /* 50% larger upwards than original 48-64px */
+  padding: 4px clamp(3px, 0.6vw, 10px);
   border-radius: var(--radius-md);
   font-weight: 700;
   font-size: clamp(0.70rem, 0.95vw, 0.98rem);
@@ -877,12 +877,19 @@ footer.quick-actions {
   white-space: normal;
   flex: 1 1 0px;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .btn-main-text {
   display: block;
   font-weight: 700;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .btn-subtext {
@@ -891,8 +898,13 @@ footer.quick-actions {
   font-weight: 600;
   opacity: 0.88;
   white-space: nowrap;
-  margin-top: 1px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 3px;
+  line-height: 1.1;
 }
+
 
 .quick-btn:hover {
   filter: brightness(1.12);
@@ -986,10 +998,12 @@ footer.quick-actions {
 }
 .pause-slot-btn {
   min-width: clamp(26px, 2.8vw, 42px);
-  height: clamp(48px, 6.5vh, 64px);
+  height: clamp(72px, 10vh, 96px); /* 50% larger */
   padding: 2px clamp(3px, 0.4vw, 8px);
   font-size: clamp(0.70rem, 0.85vw, 0.90rem);
   flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 4. 6/7 (Orange) */
@@ -1021,21 +1035,24 @@ footer.quick-actions {
   background: var(--quick-indigo-light);
 }
 
-/* 6. Stop Button (Signal Red) - 25% Larger & Prominent */
+/* 6. Stop Button (Signal Red) - 50% Larger & Prominent */
 .btn-stop,
 .quick-btn[data-action="stop"] {
   background: var(--quick-stop);
   color: var(--text-white);
-  font-size: clamp(0.95rem, 1.25vw, 1.25rem);
+  font-size: clamp(1.05rem, 1.4vw, 1.45rem);
   font-weight: 800;
   padding: 4px clamp(10px, 1.5vw, 24px);
-  min-width: clamp(75px, 8vw, 120px);
-  height: clamp(48px, 6.5vh, 64px);
+  min-width: clamp(80px, 9vw, 130px);
+  height: clamp(72px, 10vh, 96px); /* 50% larger */
   box-shadow: 0 0 18px var(--quick-stop-glow);
   letter-spacing: 0.04em;
   border: 1px solid rgba(255, 255, 255, 0.2);
   flex: 0 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 
 .btn-stop:hover,
 .quick-btn[data-action="stop"]:hover {
@@ -1336,3 +1353,193 @@ footer.quick-actions {
   font-size: 3.5rem;
   color: var(--club-blue);
 }
+
+/* ==========================================================================
+   Fullscreen FX Animations (Flames for "Ass", Shield for "Block")
+   ========================================================================== */
+
+.fx-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* 1. FLAME ANIMATION (ASS / ACE) */
+.fx-flame-container,
+.fx-flame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: fx-flame-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.fx-flame-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(249, 115, 22, 0.15) 0%, rgba(239, 68, 68, 0.5) 55%, rgba(185, 28, 28, 0.88) 100%);
+  animation: flame-pulse 0.5s infinite alternate ease-in-out;
+}
+
+.fx-flame-pillar {
+  position: absolute;
+  bottom: 0;
+  width: clamp(70px, 16vw, 180px);
+  height: 100vh;
+  background: linear-gradient(to top, rgba(239, 68, 68, 0.9), rgba(249, 115, 22, 0.65), rgba(253, 224, 71, 0.3), transparent 85%);
+  filter: blur(25px);
+  border-radius: 50% 50% 0 0;
+  animation: flame-pillar-rise 0.8s infinite alternate ease-in-out;
+}
+.fx-flame-pillar.pillar-1 { left: 8%; animation-delay: 0.05s; }
+.fx-flame-pillar.pillar-2 { left: 28%; animation-delay: 0.2s; }
+.fx-flame-pillar.pillar-3 { right: 28%; animation-delay: 0.12s; }
+.fx-flame-pillar.pillar-4 { right: 8%; animation-delay: 0.25s; }
+
+.fx-flame-ball {
+  font-size: clamp(5.5rem, 18vw, 13rem);
+  filter: drop-shadow(0 0 35px #F97316) drop-shadow(0 0 75px #DC2626);
+  animation: flame-burst 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+  z-index: 2;
+  will-change: transform, opacity;
+}
+
+.fx-flame-text {
+  font-size: clamp(2.8rem, 9vw, 7rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #FFFFFF;
+  text-shadow: 0 0 20px #FDE047, 0 0 45px #F97316, 0 0 85px #DC2626, 0 0 130px #991B1B;
+  animation: flame-text-pop 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.2) forwards;
+  z-index: 3;
+  margin-top: 8px;
+  text-align: center;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+@keyframes fx-flame-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes flame-pulse {
+  0% { opacity: 0.7; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes flame-pillar-rise {
+  0% { transform: translateY(15px) scaleX(0.9); }
+  100% { transform: translateY(-30px) scaleX(1.15); }
+}
+
+@keyframes flame-burst {
+  0% { transform: scale(0.1) rotate(-15deg); opacity: 0; }
+  35% { transform: scale(1.3) rotate(8deg); opacity: 1; }
+  65% { transform: scale(1.05) rotate(-3deg); opacity: 1; }
+  100% { transform: scale(1.15) rotate(0deg); opacity: 1; }
+}
+
+@keyframes flame-text-pop {
+  0% { transform: scale(0.2) translateY(40px); opacity: 0; }
+  30% { transform: scale(1.25) translateY(-10px); opacity: 1; }
+  55% { transform: scale(1.0) translateY(0); opacity: 1; }
+  100% { transform: scale(1.08) translateY(-5px); opacity: 1; }
+}
+
+/* 2. SHIELD ANIMATION (BLOCK) */
+.fx-shield-container,
+.fx-shield {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: fx-shield-fade-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.fx-shield-barrier {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(236, 72, 153, 0.22) 0%, rgba(190, 24, 93, 0.55) 55%, rgba(88, 28, 135, 0.9) 100%);
+  animation: shield-barrier-pulse 0.5s infinite alternate ease-in-out;
+}
+
+.fx-shield-shockwave {
+  position: absolute;
+  border-radius: 50%;
+  border: 6px solid #F472B6;
+  box-shadow: 0 0 40px #F472B6, inset 0 0 30px #BE185D;
+  animation: shield-shockwave 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+.fx-shield-shockwave.shockwave-1 { width: 120px; height: 120px; }
+.fx-shield-shockwave.shockwave-2 { width: 120px; height: 120px; animation-delay: 0.18s; }
+
+.fx-shield-icon {
+  font-size: clamp(5.5rem, 18vw, 13rem);
+  filter: drop-shadow(0 0 35px #F472B6) drop-shadow(0 0 75px #BE185D);
+  animation: shield-slam 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.35) forwards;
+  z-index: 2;
+  will-change: transform, opacity;
+}
+
+.fx-shield-text {
+  font-size: clamp(2.8rem, 9vw, 7rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #FFFFFF;
+  text-shadow: 0 0 20px #F472B6, 0 0 45px #DB2777, 0 0 85px #BE185D, 0 0 130px #831843;
+  animation: shield-text-pop 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.2) forwards;
+  z-index: 3;
+  margin-top: 8px;
+  text-align: center;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+@keyframes fx-shield-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shield-barrier-pulse {
+  0% { opacity: 0.75; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1.02); }
+}
+
+@keyframes shield-shockwave {
+  0% { transform: scale(0.2); opacity: 1; }
+  80% { opacity: 0.6; }
+  100% { transform: scale(7); opacity: 0; }
+}
+
+@keyframes shield-slam {
+  0% { transform: scale(0.1) rotate(20deg); opacity: 0; }
+  35% { transform: scale(1.35) rotate(-5deg); opacity: 1; }
+  60% { transform: scale(0.95) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1.05) rotate(0deg); opacity: 1; }
+}
+
+@keyframes shield-text-pop {
+  0% { transform: scale(0.2) translateY(40px); opacity: 0; }
+  30% { transform: scale(1.25) translateY(-10px); opacity: 1; }
+  55% { transform: scale(1.0) translateY(0); opacity: 1; }
+  100% { transform: scale(1.08) translateY(-5px); opacity: 1; }
+}
+
+.fx-fade-out {
+  opacity: 0 !important;
+  transition: opacity 0.4s ease-out !important;
+}
+
