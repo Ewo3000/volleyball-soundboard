@@ -13,8 +13,8 @@ test('pause buttons are titled Pause 1 through Pause 4 and are laid out in 2×2 
   // Pause slots rendered as 2×2 grid
   assert.match(css, /\.pause-slots-group[\s\S]*?display:\s*grid/);
   assert.match(css, /\.pause-slots-group[\s\S]*?grid-template-columns:\s*1fr 1fr/);
-  // Pause slot button min-width (now smaller since grid handles layout)
-  assert.match(css, /\.pause-slot-btn[\s\S]*?min-width:\s*clamp\(\s*[34][0-9]px/);
+  // Pause slot button min-width doubled to at least 88px
+  assert.match(css, /\.pause-slot-btn[\s\S]*?min-width:\s*clamp\(\s*88px/);
 });
 
 test('pause hourglass overlay exists in DOM and functions are exported in js/app.js', async () => {
