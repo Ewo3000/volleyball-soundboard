@@ -273,5 +273,13 @@ test('action buttons have +50% width via flex: 2.25', () => {
   assert.match(css, /\.quick-btn[\s\S]*?min-width:\s*clamp\(\s*75px/);
 });
 
+test('action button typography is enlarged per specification', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.quick-btn[\s\S]*?font-size:\s*clamp\(\s*0\.80rem/);
+  assert.match(css, /\.stacked-btn[\s\S]*?font-size:\s*clamp\(\s*0\.95rem/);
+  assert.match(css, /\.pause-slot-btn[\s\S]*?font-size:\s*clamp\(\s*0\.95rem/);
+});
+
+
 
 

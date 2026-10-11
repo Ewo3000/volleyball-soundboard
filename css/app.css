@@ -875,7 +875,7 @@ footer.quick-actions {
   padding: 4px clamp(3px, 0.6vw, 10px);
   border-radius: var(--radius-md);
   font-weight: 700;
-  font-size: clamp(0.70rem, 0.95vw, 0.98rem);
+  font-size: clamp(0.80rem, 1.05vw, 1.10rem); /* +1 step */
   letter-spacing: 0.01em;
   display: inline-flex;
   flex-direction: column;
@@ -887,19 +887,21 @@ footer.quick-actions {
   transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
   box-shadow: var(--shadow-sm);
   white-space: normal;
-  flex: 2.25 1 0px; /* +50% wider (from 1.5) */
+  flex: 2.25 1 0px;
   min-width: clamp(75px, 8.5vw, 120px);
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
 }
 
-/* Stacked buttons (Timeout + Walk-On): half height, fill column width */
+/* Stacked buttons (Timeout + Walk-On): +3 steps font-size */
 .stacked-btn {
-  height: clamp(50px, 6.5vh, 66px); /* ~half the bar height */
+  height: clamp(50px, 6.5vh, 66px);
   flex: 1 1 auto;
   width: 100%;
   min-width: clamp(120px, 14vw, 200px);
+  font-size: clamp(0.95rem, 1.30vw, 1.35rem);
+  font-weight: 800;
 }
 
 .btn-main-text {
@@ -1023,11 +1025,12 @@ footer.quick-actions {
   align-self: stretch;
 }
 .pause-slot-btn {
-  height: clamp(50px, 6.5vh, 66px); /* half the bar height — 2 rows fit */
+  height: clamp(50px, 6.5vh, 66px);
   min-width: clamp(88px, 10vw, 144px);
   padding: 2px clamp(4px, 0.5vw, 10px);
-  font-size: clamp(0.68rem, 0.82vw, 0.88rem);
-  flex: unset; /* override .quick-btn flex — grid handles sizing */
+  font-size: clamp(0.95rem, 1.30vw, 1.30rem); /* +4 steps */
+  font-weight: 800;
+  flex: unset;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
