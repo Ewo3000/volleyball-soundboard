@@ -9,11 +9,13 @@ Eine moderne, offline-fähige Web-App (PWA) als digitales DJ-Pult für Volleybal
 ## 🌟 Hauptfunktionen
 
 - **Speziell für Spieltage konzipiert:** Schneller Zugriff auf Einlaufmusik, Timeouts, Satzpausen, Asse, Block-Hits und Stimmungssongs während des Spiels.
-- **Tablets & Desktop (Querformat):** 7 übersichtliche Spalten mit dynamischer Skalierung (Zoom 70 % – 120 %) und um 50 % vergrößerter Schnellzugriffsleiste nach oben mit automatischer Breitenanpassung, zweizeiliger Beschriftung und garantiertem Schutz vor Textüberstand.
-- **Spektakuläre Vollbild-Animationen:**
+- **Tablets & Desktop (Querformat):** 7 übersichtliche Spalten mit dynamischer Skalierung (Zoom 70 % – 120 %), minimiertem Abstand zwischen Mediathek und Footer für maximale Platzausnutzung sowie um 50 % vergrößerter Schnellzugriffsleiste mit automatischer Breitenanpassung, bis zu dreizeiliger Beschriftung und garantiertem Schutz vor Textüberstand.
+- **Spektakuläre Vollbild-Animationen & Satzpausen-Overlay:**
   - 🔥 **Flammenanimation:** Schießt bei Tipp auf den "Ass"-Button über die gesamte Appoberfläche empor.
   - 🛡️ **Schild-/Blockanimation:** Entfaltet bei Tipp auf den "Block"-Button eine wuchtige Abwehrbarriere und Schockwelle über den gesamten Bildschirm.
-  - Beide Effekte sind vollständig klicktransparent (`pointer-events: none`), sodass die Bedienung zu keinem Zeitpunkt blockiert wird.
+  - ⏳ **Animiertes Sanduhr-Overlay (Satzpause):** Legt sich während der Satzpausen elegant über die Mediathek mit sanft drehender Sanduhr und Anzeige des Pausentracks, während Quick-Buttons und STOPP-Taste voll bedienbar bleiben.
+  - Alle Overlay-Effekte sind klicktransparent (`pointer-events: none`), sodass die Audiobedienung zu keinem Zeitpunkt blockiert wird.
+- **Pulsierende Button-Animation:** Ausgelöste Schnellzugriffsknöpfe und Song-Buttons pulsieren während der Wiedergabe mit einem intensiven Glow-Effekt (`pulse-playing-glow`), der sofort signalisiert, welcher Track aktiv ist.
 - **Smartphone-Modus (Hochformat):** Automatische Reduktion auf die Schnellzugriffstasten mit großem Daumen-Pad und einem Vollbild-Drawer ("Alle Songs & Kategorien").
 - **100 % Offline-fähig (PWA):** Ein Service Worker speichert die gesamte Anwendung im Browsercache. Funktioniert in jeder Sporthalle auch ohne Internetverbindung.
 - **Lokale IndexedDB-Persistenz:** Musikdateien (MP3, WAV, OGG, M4A, FLAC) und Zählerstände werden lokal im Speicher des Tablets/Browsers gespeichert und bleiben nach dem Neuladen erhalten.
@@ -57,10 +59,10 @@ Unterstriche im Dateinamen werden in der Oberfläche automatisch zu sauberen Lee
 | `_FUN`, `_SPASS` | **Spaß & Extras** | Spalte 7 (Lila) |
 | `_TIMEOUT` | **Timeout** | Schnellzugriffsleiste (*Timeout*) |
 | `_WALKON`, `_EINLAUF` | **Walk-On** | Schnellzugriffsleiste (*Walk-On*) |
-| `_PAUSE1` | **Pausensong 1** | Schnellzugriffsleiste (Slot 1) |
-| `_PAUSE2` | **Pausensong 2** | Schnellzugriffsleiste (Slot 2) |
-| `_PAUSE3` | **Pausensong 3** | Schnellzugriffsleiste (Slot 3) |
-| `_PAUSE4` | **Pausensong 4** | Schnellzugriffsleiste (Slot 4) |
+| `_PAUSE1` | **Pausensong 1** | Schnellzugriffsleiste (**Pause 1**, verdoppelte Button-Breite) |
+| `_PAUSE2` | **Pausensong 2** | Schnellzugriffsleiste (**Pause 2**, verdoppelte Button-Breite) |
+| `_PAUSE3` | **Pausensong 3** | Schnellzugriffsleiste (**Pause 3**, verdoppelte Button-Breite) |
+| `_PAUSE4` | **Pausensong 4** | Schnellzugriffsleiste (**Pause 4**, verdoppelte Button-Breite) |
 | `_PAUSE`, `_PAUSENSONG` | **Allgemeine Pausensongs** | Füllen unbesetzte Pausenslots 1–4 automatisch auf |
 | `_SIXSEVEN`, `_67` | **6 / 7 Hype** | Schnellzugriffsleiste (*6 / 7*) |
 
@@ -80,19 +82,20 @@ Unterstriche im Dateinamen werden in der Oberfläche automatisch zu sauberen Lee
 
 ### 2. Audio abspielen & Stop
 - **Spalten-Buttons:** Durch Antippen eines Songs startet die Wiedergabe sofort.
-- **Aktiv-Status:** Der aktuell laufende Song pulsiert mit einer blauen Neon-Glow-Animation.
+- **Aktiv-Status & Pulsieren:** Sowohl der laufende Song in der Mediathek als auch der auslösende Button in der Aktionsleiste pulsieren mit einer intensiven Neon-Glow-Animation (`pulse-playing-glow`).
+- **Satzpause mit Sanduhr:** Beim Abspielen von Pausensongs blendet sich ein animiertes Sanduhr-Overlay ("⏳ Satzpause") samt Songtitel über der Mediathek ein.
 - **Play-Zähler:** Jeder Song besitzt rechts eine Badge mit der Anzahl der bisherigen Abspiele.
-- **■ STOP:** Beendet die aktuelle Wiedergabe mit einem sanften **2,0-Sekunden-Fadeout**.
+- **■ STOP:** Beendet die aktuelle Wiedergabe mit einem sanften **2,0-Sekunden-Fadeout**, blendet das Pausen-Overlay sanft aus und setzt den Pulsier-Status aller Buttons zurück.
 
 ### 3. Schnellzugriffsleiste (Footer)
-Die Schnellzugriffsleiste ist um **50 % nach oben vergrößert** für noch leichtere Treffsicherheit in hitzigen Spielsituationen. Sie passt sich dynamisch an die Gerätebreite an, und Texte werden mit `overflow: hidden` und `text-overflow: ellipsis` strikt vor Überstand geschützt. Längere Texte mit Klammern (z. B. "(Eigenes Team)", "(Zufall)") werden übersichtlich zweizeilig formatiert:
+Die Schnellzugriffsleiste und deren Aktions-Buttons sind um **50 % vergrößert** (Mindesthöhe 108 px, Leistenhöhe mind. 130 px) und der Abstand zur Mediathek ist minimiert für maximale Treffsicherheit in hitzigen Spielsituationen. Sie passt sich dynamisch an die Gerätebreite an, und Texte werden mit bis zu dreizeiligem Umbruch, Silbentrennung sowie `overflow: hidden` und `text-overflow: ellipsis` strikt vor Überstand geschützt:
 - **🏐 Ass (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_ACE` ab (priorisiert noch ungespielte Asse) und zündet eine feurige **Vollbild-Flammenanimation** über die gesamte App.
 - **🛡️ Block (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_BLOCK` ab (priorisiert noch ungespielte Blocks) und entfacht eine wuchtige **Vollbild-Schild- und Schockwellen-Animation**.
 - **⚡ Eigene Punkte (Zufall):** Wählt per Zufall einen Titel aus *Ass / Angriff* oder *Sonstiges* aus.
 - **🛡 Gegnerpunkte (Zufall):** Wählt per Zufall einen Titel aus der Kategorie *Gegner* (`_OPP`).
 - **Timeout:** Spielt sofort einen Auszeit-Sound (`_TIMEOUT`).
 - **Walk-On:** Spielt die Einlaufmusik (`_WALKON`).
-- **Pausensongs 1 – 4:** Vordefinierte Satzpausensongs (`_PAUSE1` bis `_PAUSE4`).
+- **Pause 1 – 4:** Vordefinierte Satzpausensongs (`_PAUSE1` bis `_PAUSE4`) mit **verdoppelter Mindestbreite** für treffsichere Bedienung; aktiviert während des Spielens das animierte Sanduhr-Overlay über der Mediathek.
 - **6 / 7:** Spielt den 6/7-Hype-Sound (`_SIXSEVEN`).
 - **■ STOP:** Beendet die aktuelle Wiedergabe mit einem sanften **2,0-Sekunden-Fadeout**.
 
@@ -148,7 +151,7 @@ Die App benötigt keinen Server und besteht rein aus statischen Web-Dateien (HTM
 
 ## 🧪 Tests & Qualitätssicherung
 
-Die Anwendung verfügt über eine umfassende Test-Suite (84 automatisierte Tests):
+Die Anwendung verfügt über eine umfassende Test-Suite (91 automatisierte Tests):
 ```bash
 npm test
 ```
@@ -157,7 +160,10 @@ Getestet werden:
 - Gleichmäßige Round-Robin-Verteilung der Songs ohne Suffix auf Sonstiges 1, 2 und 3
 - Duplikaterkennung und -vermeidung beim Importieren
 - Web Audio Pipeline, Lautstärkeskalierung und 2,0-Sekunden-Fade-Out bei STOP
-- 50 % vergrößerte Aktionsleiste, responsives Layout und strikter Schutz vor Textüberstand
+- 50 % vergrößerte Aktionsleiste (Höhe ≥ 130 px, Buttons ≥ 108 px), minimierter Mediathek-Abstand und dreizeiliger Textumbruch ohne Überstand
+- Pause 1 bis Pause 4 Buttons mit verdoppelter Mindestbreite
+- Animiertes Sanduhr-Overlay über der Mediathek während Satzpausen (Show/Hide Lifecycle)
+- Pulsierende Animation (`pulse-playing-glow`) und State-Management für getriggerte Buttons
 - Vollbild-Animationen für Ass (Flammen) und Block (Schild) inkl. Klicktransparenz
 - Screen Wake Lock Erwerb und Reaktivierung
 - PWA Service Worker Cache-Strategie (100 % offline) und dynamische Update-Erkennung via `version.json`

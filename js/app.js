@@ -332,6 +332,7 @@ export async function handlePlayTrack(track) {
     updateTrackDOMPlayCount(track.id, track.playCount);
   } catch (err) {
     hidePauseOverlay();
+    clearActiveTriggerButton();
     console.error('Error playing track:', err);
   }
 }
@@ -782,7 +783,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.4.0';
+export const APP_VERSION = '1.5.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
