@@ -248,7 +248,9 @@ export function updateTrackDOMPlayCount(trackId, count) {
 export async function handlePlayTrack(track) {
   if (!track) return;
   try {
-    wakeLock.requestLock().catch((err) => console.warn('Wake lock error:', err));
+    if (!wakeLock.isActive()) {
+      wakeLock.requestLock().catch((err) => console.warn('Wake lock error:', err));
+    }
     await audioEngine.playTrack(track);
 
     track.playCount = (typeof track.playCount === 'number' ? track.playCount : 0) + 1;
@@ -279,7 +281,7 @@ export function filterTracks(query) {
     return;
   }
 
-  let matchCount = 0;
+  const matchedTrackIds = new Set();
   allSongButtons.forEach((btn) => {
     const trackId = btn.getAttribute('data-track-id');
     const track = allTracks.find((t) => t.id === trackId);
@@ -289,7 +291,9 @@ export function filterTracks(query) {
     if (titleText.includes(currentSearchQuery) || trackName.includes(currentSearchQuery)) {
       btn.classList.remove('search-dimmed', 'dimmed');
       btn.classList.add('search-highlighted', 'highlighted');
-      matchCount++;
+      if (trackId) {
+        matchedTrackIds.add(trackId);
+      }
     } else {
       btn.classList.remove('search-highlighted', 'highlighted');
       btn.classList.add('search-dimmed', 'dimmed');
@@ -297,7 +301,7 @@ export function filterTracks(query) {
   });
 
   if (searchResultsBadge) {
-    searchResultsBadge.textContent = `${matchCount} Treffer`;
+    searchResultsBadge.textContent = `${matchedTrackIds.size} Treffer`;
   }
 }
 
@@ -521,6 +525,15 @@ export function setupEventListeners() {
   audioEngine.onTrackEnd = () => {
     updatePlayingUI(null);
   };
+
+  // One-time user gesture listener to acquire wake lock on first interaction
+  if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', () => {
+      if (!wakeLock.isActive()) {
+        wakeLock.requestLock().catch(() => {});
+      }
+    }, { once: true });
+  }
 
   // Zoom controls
   const btnZoomIn = document.getElementById('zoom-in');

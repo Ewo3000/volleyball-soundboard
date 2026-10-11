@@ -489,6 +489,8 @@ header.header,
   flex: 1;
   min-height: 0;
   width: 100%;
+  transform-origin: top center;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Individual Column */
@@ -946,7 +948,7 @@ footer.quick-actions {
   visibility: visible;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (orientation: portrait) {
   /* Hide 7-column grid from main screen on phones */
   #soundboard-grid,
   #columns-grid,

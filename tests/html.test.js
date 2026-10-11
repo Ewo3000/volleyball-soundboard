@@ -136,3 +136,33 @@ test('js/app.js exports and functions behave correctly', async () => {
   assert.ok(buttonHtml.includes('data-count="2"'));
 });
 
+test('filterTracks dedupes matched songs across grid and drawer', async () => {
+  const { filterTracks } = await import('../js/app.js');
+
+  const mockBadge = { textContent: '' };
+  const mockBtn1 = {
+    getAttribute: (name) => (name === 'data-track-id' ? 'track_abc' : null),
+    querySelector: () => ({ textContent: 'Volleyball Anthem' }),
+    classList: { add: () => {}, remove: () => {} }
+  };
+  const mockBtn2 = {
+    getAttribute: (name) => (name === 'data-track-id' ? 'track_abc' : null),
+    querySelector: () => ({ textContent: 'Volleyball Anthem' }),
+    classList: { add: () => {}, remove: () => {} }
+  };
+
+  const originalDoc = globalThis.document;
+  globalThis.document = {
+    getElementById: (id) => (id === 'search-results-badge' ? mockBadge : null),
+    querySelectorAll: (selector) => (selector === '.song-btn, .track-btn' ? [mockBtn1, mockBtn2] : [])
+  };
+
+  try {
+    filterTracks('Anthem');
+    assert.equal(mockBadge.textContent, '1 Treffer', 'badge should count 1 unique track, not 2 buttons');
+  } finally {
+    globalThis.document = originalDoc;
+  }
+});
+
+
