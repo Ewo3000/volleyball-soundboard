@@ -594,7 +594,58 @@ export function hidePauseOverlay() {
   overlay.setAttribute('aria-hidden', 'true');
 }
 
+/**
+ * Triggers fullscreen hype animation with screen shake on 6/7 action
+ */
+export function triggerSixSevenAnimation() {
+  if (typeof document === 'undefined') return null;
+  const overlay = document.getElementById('fx-overlay');
+  const appContainer = document.getElementById('app') || document.body;
+
+  if (appContainer?.classList) {
+    appContainer.classList.add('screen-shake');
+    setTimeout(() => {
+      appContainer.classList.remove('screen-shake');
+    }, 700);
+  }
+
+  // Haptic feedback if supported by browser/device
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate([100, 50, 100, 50, 200]);
+    }
+  } catch (_) {}
+
+  if (!overlay) return null;
+
+  overlay.innerHTML = '';
+
+  const container = document.createElement('div');
+  container.className = 'fx-sixseven-container fx-sixseven';
+  container.innerHTML = `
+    <div class="fx-sixseven-burst"></div>
+    <div class="fx-sixseven-ring"></div>
+    <div class="fx-sixseven-ring-outer"></div>
+    <div class="fx-sixseven-content">
+      <div class="fx-sixseven-number">6 / 7</div>
+      <div class="fx-sixseven-subtitle">HYPE!</div>
+    </div>
+  `;
+
+  overlay.appendChild(container);
+
+  setTimeout(() => {
+    container?.classList?.add('fx-fade-out');
+    setTimeout(() => {
+      container?.remove?.();
+    }, 400);
+  }, 1400);
+
+  return container;
+}
+
 export function playSixSeven(triggerBtn) {
+  triggerSixSevenAnimation();
   const sixSevenTracks = allTracks.filter(
     (t) => t.category === 'sixseven' || t.suffix === '_SIXSEVEN' || /_(?:SIXSEVEN|67)$/i.test(stripExtension(t.name))
   );
