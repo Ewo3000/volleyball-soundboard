@@ -103,3 +103,16 @@ test('setActiveTriggerButton and clearActiveTriggerButton manage active trigger 
   assert.equal(btn.getAttribute('data-playing'), undefined);
 });
 
+test('css minimizes grid padding and enlarges action buttons by 50%', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /#columns-grid[\s\S]*?padding:[\s\S]*?[4-8]px/);
+  // Action bar enlarged to clamp(130px...
+  assert.match(css, /#quick-actions-bar[\s\S]*?min-height:\s*clamp\(\s*130px/);
+  // Buttons enlarged to clamp(108px...
+  assert.match(css, /\.quick-btn[\s\S]*?height:\s*clamp\(\s*108px/);
+  assert.match(css, /\.pause-slot-btn[\s\S]*?height:\s*clamp\(\s*108px/);
+  assert.match(css, /\.btn-stop[\s\S]*?height:\s*clamp\(\s*108px/);
+  // Mobile stop button accessible above pause overlay
+  assert.match(css, /\.mobile-stop-btn[\s\S]*?z-index:\s*450/);
+});
+

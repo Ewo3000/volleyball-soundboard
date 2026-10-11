@@ -105,19 +105,21 @@ test('triggerBlockAnimation creates shield effect elements inside overlay', asyn
 test('css/app.css enlarges quick actions bar by 50% (height >= 88px, buttons >= 70px)', () => {
   const css = fs.readFileSync(CSS_PATH, 'utf8');
 
-  // Quick actions bar must be at least 88px - 114px min-height (50% increase from original 60-76px)
+  // Quick actions bar must be at least 88px - 160px min-height (50% increase from original 60-76px)
   assert.ok(
     css.includes('min-height: clamp(88px') ||
     css.includes('min-height: clamp(90px') ||
+    css.includes('min-height: clamp(130px') ||
     css.includes('min-height: 90px') ||
     css.includes('min-height: 96px'),
     'quick actions bar min-height must be scaled up by ~50%'
   );
 
-  // Quick action buttons must be at least 70px - 96px in height (50% increase from original 48-64px)
+  // Quick action buttons must be at least 70px - 140px in height (50% increase from original 48-64px)
   assert.ok(
     css.includes('height: clamp(70px') ||
     css.includes('height: clamp(72px') ||
+    css.includes('height: clamp(108px') ||
     css.includes('height: 72px'),
     'quick action buttons height must be scaled up by ~50%'
   );
