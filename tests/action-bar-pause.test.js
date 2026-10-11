@@ -278,6 +278,8 @@ test('action button typography is enlarged per specification', () => {
   assert.match(css, /\.quick-btn[\s\S]*?font-size:\s*clamp\(\s*0\.80rem/);
   assert.match(css, /\.stacked-btn[\s\S]*?font-size:\s*clamp\(\s*0\.95rem/);
   assert.match(css, /\.pause-slot-btn[\s\S]*?font-size:\s*clamp\(\s*0\.95rem/);
+  assert.match(css, /\.stacked-btn[\s\S]*?font-weight:\s*800/);
+  assert.match(css, /\.pause-slot-btn[\s\S]*?font-weight:\s*800/);
 });
 
 
