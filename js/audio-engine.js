@@ -168,7 +168,7 @@ export class AudioEngine {
     }
   }
 
-  stop(fadeDurationMs = 1000) {
+  stop(fadeDurationMs = 2000) {
     if (this.currentObjectUrl) {
       if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
         URL.revokeObjectURL(this.currentObjectUrl);

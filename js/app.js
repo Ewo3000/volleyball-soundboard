@@ -498,6 +498,18 @@ export function playAce() {
   }
 }
 
+export function playBlock() {
+  const blockTracks = allTracks.filter(
+    (t) => t.category === 'block' || t.suffix === '_BLOCK' || /_BLOCK$/i.test(stripExtension(t.name))
+  );
+  const track = pickLeastPlayedRandomTrack(blockTracks);
+  if (track) {
+    handlePlayTrack(track);
+  } else {
+    console.warn('Keine Block-Tracks (_BLOCK) vorhanden');
+  }
+}
+
 export function playRandomOwn() {
   const ownTracks = allTracks.filter((t) =>
     ['ass_angriff', 'sonstiges', 'sonstiges_1', 'sonstiges_2', 'sonstiges_3'].includes(t.category)
@@ -521,7 +533,7 @@ export function playRandomOpponent() {
 }
 
 export function stopAudio() {
-  audioEngine.stop(1000);
+  audioEngine.stop(2000);
 }
 
 export async function handleClearAll() {
@@ -808,6 +820,9 @@ export function setupEventListeners() {
   const btnAce = document.getElementById('btn-ace');
   if (btnAce) btnAce.addEventListener('click', playAce);
 
+  const btnBlock = document.getElementById('btn-block');
+  if (btnBlock) btnBlock.addEventListener('click', playBlock);
+
   const btnRandomOwn = document.getElementById('btn-random-own');
   if (btnRandomOwn) btnRandomOwn.addEventListener('click', playRandomOwn);
 
@@ -832,6 +847,9 @@ export function setupEventListeners() {
 
   const btnMobileAce = document.getElementById('btn-mobile-ace');
   if (btnMobileAce) btnMobileAce.addEventListener('click', playAce);
+
+  const btnMobileBlock = document.getElementById('btn-mobile-block');
+  if (btnMobileBlock) btnMobileBlock.addEventListener('click', playBlock);
 
   const btnMobileRandomOwn = document.getElementById('btn-mobile-random-own');
   if (btnMobileRandomOwn) btnMobileRandomOwn.addEventListener('click', playRandomOwn);

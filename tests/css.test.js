@@ -49,3 +49,15 @@ test('css/app.css defines touch ergonomics, active playing glow, and zoom contai
   assert.ok(content.includes('transform-origin'), 'must configure zoom container transform-origin');
   assert.ok(content.includes('overflow-x: auto') || content.includes('overflow-x:auto'), 'must allow horizontal scroll/pan for zoomed board-container');
 });
+
+test('css/app.css styles quick action bar responsively with dynamic font scaling, two-line text and block button', () => {
+  const content = fs.readFileSync(CSS_PATH, 'utf8');
+
+  // Must constrain quick actions bar within viewport width
+  assert.ok(content.includes('max-width: 100vw') || content.includes('max-width:100vw'), 'quick-actions-bar must have max-width: 100vw');
+  // Must style .btn-subtext and .btn-main-text
+  assert.ok(content.includes('.btn-subtext'), 'must define .btn-subtext styling');
+  assert.ok(content.includes('.btn-main-text'), 'must define .btn-main-text styling');
+  // Must style .btn-block in quick action bar
+  assert.ok(content.includes('.btn-block'), 'must define .btn-block styling');
+});

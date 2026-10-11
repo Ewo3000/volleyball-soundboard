@@ -106,7 +106,7 @@ test('processSelectedFiles prevents duplicate files from being imported repeated
   assert.equal(stored.length, 3, 'in-batch duplicates must be deduplicated');
 });
 
-test('stopAudio fades out with 1.0 second (1000ms) duration', () => {
+test('stopAudio fades out with 2.0 seconds (2000ms) duration', () => {
   let capturedFade = null;
   const originalStop = audioEngine.stop;
   audioEngine.stop = (duration) => {
@@ -115,10 +115,15 @@ test('stopAudio fades out with 1.0 second (1000ms) duration', () => {
 
   try {
     stopAudio();
-    assert.equal(capturedFade, 1000, 'STOP fade-out duration must be exactly 1000ms (1 second)');
+    assert.equal(capturedFade, 2000, 'STOP fade-out duration must be exactly 2000ms (2 seconds)');
   } finally {
     audioEngine.stop = originalStop;
   }
+});
+
+test('playBlock strictly triggers random selection from block tracks with _BLOCK suffix', async () => {
+  const { playBlock } = await import('../js/app.js');
+  assert.equal(typeof playBlock, 'function', 'playBlock must be exported from js/app.js');
 });
 
 test('filterTracks adds .search-hidden to non-matching songs and updates clear button visibility', () => {

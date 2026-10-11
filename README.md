@@ -9,14 +9,14 @@ Eine moderne, offline-fähige Web-App (PWA) als digitales DJ-Pult für Volleybal
 ## 🌟 Hauptfunktionen
 
 - **Speziell für Spieltage konzipiert:** Schneller Zugriff auf Einlaufmusik, Timeouts, Satzpausen, Asse, Block-Hits und Stimmungssongs während des Spiels.
-- **Tablets & Desktop (Querformat):** 7 übersichtliche Spalten mit dynamischer Skalierung (Zoom 70 % – 120 %) und extra großer Schnellzugriffsleiste (+25 % Tastengröße).
+- **Tablets & Desktop (Querformat):** 7 übersichtliche Spalten mit dynamischer Skalierung (Zoom 70 % – 120 %) und responsiver Schnellzugriffsleiste mit automatischer Breitenanpassung, zweizeiliger Beschriftung und garantiertem Schutz vor Bildschirmüberlauf.
 - **Smartphone-Modus (Hochformat):** Automatische Reduktion auf die Schnellzugriffstasten mit großem Daumen-Pad und einem Vollbild-Drawer ("Alle Songs & Kategorien").
 - **100 % Offline-fähig (PWA):** Ein Service Worker speichert die gesamte Anwendung im Browsercache. Funktioniert in jeder Sporthalle auch ohne Internetverbindung.
 - **Lokale IndexedDB-Persistenz:** Musikdateien (MP3, WAV, OGG, M4A, FLAC) und Zählerstände werden lokal im Speicher des Tablets/Browsers gespeichert und bleiben nach dem Neuladen erhalten.
 - **Duplikat-Schutz:** Verhindert zuverlässig das mehrfache Importieren identischer Audiodateien.
 - **Web Audio API Engine:** 
   - 50 ms Mikro-Fade beim Umschalten zwischen Songs (verhindert Knacken und Audio-Pops über Bluetooth).
-  - 1,0 Sekunde weicher Fade-Out bei Berührung des STOP-Buttons.
+  - 2,0 Sekunden weicher Fade-Out bei Berührung des STOP-Buttons.
   - Zufallswiedergabe mit Priorisierung ungespielter Songs (`playCount == 0`).
 - **Screen Wake Lock:** Verhindert automatisches Abdunkeln oder Sperren des Tablet-Bildschirms während des Spielbetriebs.
 - **Echtzeit-Suche:** Sofortiges Ausblenden nicht passender Songs mit 1-Klick-Löschbutton (✕).
@@ -47,7 +47,7 @@ Unterstriche im Dateinamen werden in der Oberfläche automatisch zu sauberen Lee
 | :--- | :--- | :--- |
 | `_HIT`, `_ANGRIFF`, `_ASS` | **Ass / Angriff** | Spalte 1 (Blau) |
 | `_ACE` | **Ass / Angriff** & **Ass (Eigenes Team)** | Spalte 1 (Blau) & Schnellzugriff-Button *🏐 Ass (Eigenes Team)* |
-| `_BLOCK` | **Block** | Spalte 2 (Magenta) |
+| `_BLOCK` | **Block** & **Block (Eigenes Team)** | Spalte 2 (Magenta) & Schnellzugriff-Button *🛡️ Block (Eigenes Team)* |
 | `_OPP`, `_GEGNER`, `_OPPONENT` | **Gegner** | Spalte 3 (Rot) |
 | **Kein Suffix** (oder `_SONSTIGES`) | **Sonstiges** | **Gleichmäßig auf Spalten 4, 5 und 6 verteilt** (Smaragdgrün) |
 | `_FUN`, `_SPASS` | **Spaß & Extras** | Spalte 7 (Lila) |
@@ -78,16 +78,19 @@ Unterstriche im Dateinamen werden in der Oberfläche automatisch zu sauberen Lee
 - **Spalten-Buttons:** Durch Antippen eines Songs startet die Wiedergabe sofort.
 - **Aktiv-Status:** Der aktuell laufende Song pulsiert mit einer blauen Neon-Glow-Animation.
 - **Play-Zähler:** Jeder Song besitzt rechts eine Badge mit der Anzahl der bisherigen Abspiele.
-- **■ STOP:** Beendet die aktuelle Wiedergabe mit einem sanften **1-Sekunden-Fadeout**.
+- **■ STOP:** Beendet die aktuelle Wiedergabe mit einem sanften **2,0-Sekunden-Fadeout**.
 
 ### 3. Schnellzugriffsleiste (Footer)
+Die Schnellzugriffstasten passen sich dynamisch an die Gerätebreite an (ohne Überlauf). Längere Texte mit Klammern (z. B. "(Eigenes Team)", "(Zufall)") werden übersichtlich zweizeilig formatiert:
 - **🏐 Ass (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_ACE` ab (priorisiert noch ungespielte Asse).
+- **🛡️ Block (Eigenes Team):** Spielt per Zufall einen Song mit dem Suffix `_BLOCK` ab (priorisiert noch ungespielte Blocks).
 - **⚡ Eigene Punkte (Zufall):** Wählt per Zufall einen Titel aus *Ass / Angriff* oder *Sonstiges* aus.
 - **🛡 Gegnerpunkte (Zufall):** Wählt per Zufall einen Titel aus der Kategorie *Gegner* (`_OPP`).
 - **Timeout:** Spielt sofort einen Auszeit-Sound (`_TIMEOUT`).
 - **Walk-On:** Spielt die Einlaufmusik (`_WALKON`).
 - **Pausensongs 1 – 4:** Vordefinierte Satzpausensongs (`_PAUSE1` bis `_PAUSE4`).
 - **6 / 7:** Spielt den 6/7-Hype-Sound (`_SIXSEVEN`).
+- **■ STOP:** Beendet die aktuelle Wiedergabe mit einem sanften **2,0-Sekunden-Fadeout**.
 
 ### 4. Steuerung & Werkzeuge in der Kopfleiste
 - **Kopf ein / aus:** Blendet das große Logo-Banner ein oder aus, um maximalen Platz für die Song-Buttons auf dem Tablet zu schaffen.
@@ -141,7 +144,7 @@ Die App benötigt keinen Server und besteht rein aus statischen Web-Dateien (HTM
 
 ## 🧪 Tests & Qualitätssicherung
 
-Die Anwendung verfügt über eine umfassende Test-Suite (71 automatisierte Tests):
+Die Anwendung verfügt über eine umfassende Test-Suite (75 automatisierte Tests):
 ```bash
 npm test
 ```
@@ -149,7 +152,7 @@ Getestet werden:
 - Vollständige Suffix-Erkennung (`_ACE`, `_HIT`, `_BLOCK`, `_OPP`, `_PAUSE1..4`, `_TIMEOUT`, `_WALKON`, etc.)
 - Gleichmäßige Round-Robin-Verteilung der Songs ohne Suffix auf Sonstiges 1, 2 und 3
 - Duplikaterkennung und -vermeidung beim Importieren
-- Web Audio Pipeline, Lautstärkeskalierung und 1,0-Sekunden-Fade-Out bei STOP
+- Web Audio Pipeline, Lautstärkeskalierung und 2,0-Sekunden-Fade-Out bei STOP
 - Screen Wake Lock Erwerb und Reaktivierung
 - PWA Service Worker Cache-Strategie (100 % offline)
 - Relative Pfade für fehlerfreies Hosting auf GitHub Pages

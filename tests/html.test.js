@@ -208,4 +208,21 @@ test('index.html columns for Sonstiges are all titled "Sonstiges"', () => {
   assert.ok(!content.includes('<h2 class="column-title">Sonstiges 3</h2>'), 'column-title must not be Sonstiges 3');
 });
 
+test('index.html contains Block (Eigenes Team) quick button in desktop and mobile', () => {
+  const content = fs.readFileSync(HTML_PATH, 'utf8');
+
+  assert.ok(content.includes('id="btn-block"'), 'must contain desktop #btn-block');
+  assert.ok(content.includes('id="btn-mobile-block"'), 'must contain mobile #btn-mobile-block');
+  assert.ok(content.includes('Block'), 'must contain Block button');
+});
+
+test('index.html quick action buttons render subtext in parentheses with .btn-subtext', () => {
+  const content = fs.readFileSync(HTML_PATH, 'utf8');
+
+  // Check presence of .btn-subtext class
+  assert.ok(content.includes('class="btn-subtext"'), 'must use .btn-subtext for second line');
+  assert.ok(content.includes('(Eigenes Team)'), 'must contain (Eigenes Team) subtext');
+  assert.ok(content.includes('(Zufall)'), 'must contain (Zufall) subtext');
+});
+
 
