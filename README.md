@@ -13,8 +13,8 @@ Eine moderne, offline-fähige Web-App (PWA) als digitales DJ-Pult für Volleybal
 - **Spektakuläre Vollbild-Animationen & Satzpausen-Overlay:**
   - 🔥 **Flammenanimation:** Schießt bei Tipp auf den "Ass"-Button über die gesamte Appoberfläche empor.
   - 🛡️ **Schild-/Blockanimation:** Entfaltet bei Tipp auf den "Block"-Button eine wuchtige Abwehrbarriere und Schockwelle über den gesamten Bildschirm.
-  - ⏳ **Animiertes Sanduhr-Overlay (Satzpause):** Legt sich während der Satzpausen elegant über die Mediathek mit sanft drehender Sanduhr und Anzeige des Pausentracks, während Quick-Buttons und STOPP-Taste voll bedienbar bleiben.
-  - Alle Overlay-Effekte sind klicktransparent (`pointer-events: none`), sodass die Audiobedienung zu keinem Zeitpunkt blockiert wird.
+  - ⏳ **Animiertes Sanduhr-Overlay (Satzpause):** Legt sich während der Satzpausen elegant über die Mediathek mit sanft drehender Sanduhr und Anzeige des Pausentracks, während die Aktionsleiste und STOPP-Taste unten uneingeschränkt frei und bedienbar bleiben.
+  - Vollbild-Effekte für Ass und Block sind vollständig klicktransparent (`pointer-events: none`), sodass die Audiobedienung zu keinem Zeitpunkt blockiert wird.
 - **Pulsierende Button-Animation:** Ausgelöste Schnellzugriffsknöpfe und Song-Buttons pulsieren während der Wiedergabe mit einem intensiven Glow-Effekt (`pulse-playing-glow`), der sofort signalisiert, welcher Track aktiv ist.
 - **Smartphone-Modus (Hochformat):** Automatische Reduktion auf die Schnellzugriffstasten mit großem Daumen-Pad und einem Vollbild-Drawer ("Alle Songs & Kategorien").
 - **100 % Offline-fähig (PWA):** Ein Service Worker speichert die gesamte Anwendung im Browsercache. Funktioniert in jeder Sporthalle auch ohne Internetverbindung.

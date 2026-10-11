@@ -278,7 +278,7 @@ export function clearActiveTriggerButton() {
   }
   if (typeof document !== 'undefined') {
     const activeBtns = document.querySelectorAll?.(
-      '.quick-btn.is-playing, .mobile-quick-btn.is-playing, .pause-slot-btn.is-playing'
+      '.quick-btn.is-playing, .mobile-quick-btn.is-playing, .pause-slot-btn.is-playing, [data-playing="true"]'
     );
     activeBtns?.forEach?.((el) => {
       el.classList?.remove?.('is-playing', 'playing');
