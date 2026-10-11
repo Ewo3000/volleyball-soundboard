@@ -184,7 +184,8 @@ header.header,
 
 .header.collapsed .header-banner,
 .app-header.collapsed .header-banner,
-#main-header.collapsed #header-banner {
+#main-header.collapsed #header-banner,
+#header-banner.collapsed {
   max-height: 0;
   opacity: 0;
   padding-top: 0;
@@ -478,6 +479,7 @@ header.header,
 
 /* 7-Column Soundboard Grid (Tablet Landscape) */
 #soundboard-grid,
+#columns-grid,
 .soundboard-grid,
 .grid-container {
   display: grid;
@@ -912,6 +914,7 @@ footer.quick-actions {
 
 /* Initially hidden on desktop/tablet */
 #mobile-pad,
+#mobile-view,
 .mobile-pad,
 .mobile-quick-pad {
   display: none;
@@ -946,6 +949,7 @@ footer.quick-actions {
 @media (max-width: 768px) {
   /* Hide 7-column grid from main screen on phones */
   #soundboard-grid,
+  #columns-grid,
   .soundboard-grid,
   .grid-container {
     display: none !important;
@@ -990,6 +994,7 @@ footer.quick-actions {
 
   /* Display Large Mobile Quick-Action Pad */
   #mobile-pad,
+  #mobile-view,
   .mobile-pad,
   .mobile-quick-pad {
     display: flex;
@@ -1151,4 +1156,45 @@ footer.quick-actions {
   .drawer-tracks-list .track-btn {
     min-height: 48px;
   }
+}
+
+/* ==========================================================================
+   Drag & Drop Zone Overlay
+   ========================================================================== */
+
+#drop-zone,
+.drop-zone {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 15, 23, 0.94);
+  border: 4px dashed var(--club-blue);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-white);
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  backdrop-filter: blur(12px);
+}
+
+#drop-zone.active,
+.drop-zone.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#drop-zone .drop-icon,
+.drop-zone .drop-icon {
+  font-size: 3.5rem;
+  color: var(--club-blue);
 }

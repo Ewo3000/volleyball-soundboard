@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0F17">
+  <meta name="description" content="DJ Soundboard & Pult für Volleyballspiele des SV 1845 Esslingen">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SV 1845 Esslingen - Volleyball DJ</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+  <link rel="apple-touch-icon" href="assets/logo.jpg">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Drag & Drop Zone Overlay -->
+    <div id="drop-zone" class="drop-zone" aria-hidden="true">
+      <div class="drop-icon">📥</div>
+      <h2>Audio-Dateien hier ablegen</h2>
+      <p>Musikordner oder Songdateien hineinziehen zum Laden</p>
+    </div>
+
+    <!-- Header Section (Collapsible Banner & Compact Controls) -->
+    <header class="app-header" id="main-header">
+      <!-- Collapsible Banner -->
+      <div class="header-banner" id="header-banner">
+        <div class="brand-group">
+          <img src="assets/logo.jpg" alt="SV 1845 Esslingen Logo" class="club-logo">
+          <div class="brand-text">
+            <h1>SV 1845 <span>ESSLINGEN</span> - VOLLEYBALL DJ</h1>
+            <span class="brand-subtitle">Offizielles Soundboard für Heimspiele</span>
+          </div>
+        </div>
+        <div class="banner-actions">
+          <span class="file-status-badge" id="track-count-status">Keine Songs geladen</span>
+          <button type="button" class="btn-load-folder" id="btn-load-folder">
+            📁 Songs laden / Ordner auswählen
+          </button>
+          <input type="file" id="file-folder-input" webkitdirectory directory multiple accept="audio/*" style="display:none">
+        </div>
+      </div>
+
+      <!-- Compact Top Controls Bar -->
+      <div class="header-controls" id="header-controls">
+        <div class="controls-left">
+          <button type="button" class="btn-toggle-header" id="btn-toggle-header" title="Kopfbereich ein- oder ausklappen">
+            Kopf ein / aus
+          </button>
+          <div class="zoom-controls">
+            <button type="button" class="btn-zoom" id="zoom-out" title="Verkleinern">−</button>
+            <span class="zoom-level-text" id="zoom-display">100%</span>
+            <button type="button" class="btn-zoom" id="zoom-in" title="Vergrößern">+</button>
+          </div>
+        </div>
+
+        <div class="controls-center">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" class="search-input" placeholder="Song suchen..." autocomplete="off">
+            <span class="search-counter-badge" id="search-results-badge">0 Treffer</span>
+          </div>
+        </div>
+
+        <div class="controls-right">
+          <div class="volume-group" title="Master-Lautstärke">
+            <span class="volume-icon">🔊</span>
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100">
+            <span class="volume-value" id="volume-display">100%</span>
+          </div>
+          <button type="button" class="btn-header-tool btn-reset-counts" id="btn-reset-counts" title="Alle Play-Counts zurücksetzen">
+            Reset
+          </button>
+          <button type="button" class="btn-header-tool btn-fullscreen" id="btn-fullscreen" title="Vollbild umschalten">
+            Vollbild
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Soundboard Container -->
+    <main id="board-container" class="board-container">
+      <!-- 7-Column Soundboard Grid (Landscape / Desktop / Tablet) -->
+      <div id="columns-grid" class="soundboard-grid grid-container">
+        <!-- 1. Ass / Angriff -->
+        <section class="soundboard-column col-ass-angriff" data-category="ass_angriff">
+          <div class="column-header">
+            <h2 class="column-title">Ass / Angriff</h2>
+            <span class="col-count">0</span>
+          </div>
+          <div class="column-tracks" id="col-tracks-ass_angriff">
+            <div class="column-empty">Keine Songs</div>
+          </div>
+        </section>
+
+        <!-- 2. Block -->
+        <section class="soundboard-column col-block" data-category="block">
+          <div class="column-header">
+            <h2 class="column-title">Block</h2>
+            <span class="col-count">0</span>
+          </div>
+          <div class="column-tracks" id="col-tracks-block">
+            <div class="column-empty">Keine Songs</div>
+          </div>
+        </section>
+
+        <!-- 3. Gegner -->
+        <section class="soundboard-column col-gegner" data-category="gegner">
+          <div class="column-header">
+            <h2 class="column-title">Gegner</h2>
+            <span class="col-count">0</span>
+          </div>
+          <div class="column-tracks" id="col-tracks-gegner">
+            <div class="column-empty">Keine Songs</div>
+          </div>
+        </section>
+
+        <!-- 4. Sonstiges 1 -->
+        <section class="soundboard-column col-sonstiges-1" data-category="sonstiges_1">
+          <div class="column-header">
+            <h2 class="column-title">Sonstiges 1</h2>
+            <span class="col-count">0</span>
+          </div>
+          <div class="column-tracks" id="col-tracks-sonstiges_1">
+            <div class="column-empty">Keine Songs</div>
+          </div>
+        </section>
+
+        <!-- 5. Sonstiges 2 -->
+        <section class="soundboard-column col-sonstiges-2" data-category="sonstiges_2">
+          <div class="column-header">
+            <h2 class="column-title">Sonstiges 2</h2>
+            <span class="col-count">0</span>
+          </div>
+          <div class="column-tracks" id="col-tracks-sonstiges_2">
+            <div class="column-empty">Keine Songs</div>
+          </div>
+        </section>
+
+        <!-- 6. Sonstiges 3 -->
+        <section class="soundboard-column col-sonstiges-3" data-category="sonstiges_3">
+          <div class="column-header">
+            <h2 class="column-title">Sonstiges 3</h2>
+            <span class="col-count">0</span>
+          </div>
+          <div class="column-tracks" id="col-tracks-sonstiges_3">
+            <div class="column-empty">Keine Songs</div>
+          </div>
+        </section>
+
+        <!-- 7. Spaß & Extras -->
+        <section class="soundboard-column col-spass col-spass_extras" data-category="spass_extras">
+          <div class="column-header">
+            <h2 class="column-title">Spaß & Extras</h2>
+            <span class="col-count">0</span>
+          </div>
+          <div class="column-tracks" id="col-tracks-spass_extras">
+            <div class="column-empty">Keine Songs</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Mobile Portrait Pad -->
+      <div id="mobile-view" class="mobile-pad mobile-quick-pad">
+        <button type="button" class="btn-open-drawer" id="btn-open-drawer">
+          📂 Alle Songs & Kategorien
+        </button>
+
+        <div class="mobile-quick-grid">
+          <button type="button" class="mobile-quick-btn btn-random-eigene" id="btn-mobile-random-own" data-action="random-eigene">
+            ⚡ Eigene Punkte (Zufall)
+          </button>
+          <button type="button" class="mobile-quick-btn btn-random-gegner" id="btn-mobile-random-opponent" data-action="random-gegner">
+            🛑 Gegnerpunkte (Zufall)
+          </button>
+          <button type="button" class="mobile-quick-btn btn-timeout" id="btn-mobile-timeout" data-action="timeout">
+            ⏱ Timeout
+          </button>
+          <button type="button" class="mobile-quick-btn btn-walkon" id="btn-mobile-walkon" data-action="walkon">
+            🚶 Walk-On
+          </button>
+          <button type="button" class="mobile-quick-btn btn-sixseven" id="btn-mobile-sixseven" data-action="sixseven">
+            🔥 6 / 7
+          </button>
+          <button type="button" class="mobile-quick-btn btn-pause" id="btn-mobile-pause" data-action="pause">
+            ☕ Pausensong
+          </button>
+        </div>
+
+        <button type="button" class="mobile-stop-btn btn-stop" id="btn-mobile-stop" data-action="stop">
+          ■ STOP
+        </button>
+      </div>
+    </main>
+
+    <!-- Quick Action Footer Bar (Landscape / Desktop / Tablet) -->
+    <footer id="quick-actions-bar" class="quick-footer footer-bar">
+      <div class="quick-group">
+        <button type="button" class="quick-btn btn-timeout" id="btn-timeout" data-action="timeout">
+          ⏱ Timeout
+        </button>
+        <button type="button" class="quick-btn btn-walkon" id="btn-walkon" data-action="walkon">
+          🚶 Walk-On
+        </button>
+      </div>
+
+      <div class="quick-group pause-slots-group" id="pause-slots-container">
+        <button type="button" class="quick-btn btn-pause pause-slot-btn" id="btn-pause-1" data-slot="1" title="Pausensong 1">
+          P1
+        </button>
+        <button type="button" class="quick-btn btn-pause pause-slot-btn" id="btn-pause-2" data-slot="2" title="Pausensong 2">
+          P2
+        </button>
+        <button type="button" class="quick-btn btn-pause pause-slot-btn" id="btn-pause-3" data-slot="3" title="Pausensong 3">
+          P3
+        </button>
+        <button type="button" class="quick-btn btn-pause pause-slot-btn" id="btn-pause-4" data-slot="4" title="Pausensong 4">
+          P4
+        </button>
+      </div>
+
+      <div class="quick-group">
+        <button type="button" class="quick-btn btn-sixseven" id="btn-sixseven" data-action="sixseven">
+          6 / 7
+        </button>
+        <button type="button" class="quick-btn btn-random-eigene" id="btn-random-own" data-action="random-eigene">
+          Eigene Punkte (Zufall)
+        </button>
+        <button type="button" class="quick-btn btn-random-gegner" id="btn-random-opponent" data-action="random-gegner">
+          Gegnerpunkte (Zufall)
+        </button>
+      </div>
+
+      <div class="quick-group">
+        <button type="button" class="quick-btn btn-stop" id="btn-stop" data-action="stop">
+          ■ STOP
+        </button>
+      </div>
+    </footer>
+
+    <!-- Full-Screen Drawer for All Songs & Categories -->
+    <div id="all-songs-drawer" class="drawer modal-drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <h2 class="drawer-title">Alle Songs & Kategorien</h2>
+        <div class="search-wrapper" style="max-width: 260px;">
+          <input type="text" id="drawer-search-input" class="search-input" placeholder="Song suchen..." autocomplete="off">
+        </div>
+        <button type="button" class="btn-close-drawer" id="btn-close-drawer" aria-label="Schließen">
+          ✕
+        </button>
+      </div>
+      <div class="drawer-body" id="drawer-content">
+        <!-- Rendered categorized tracks will appear here -->
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
