@@ -576,8 +576,8 @@ export function showPauseOverlay(track) {
     const title = track?.name || track?.title;
     trackNameEl.textContent = title ? cleanTrackTitle(title) : 'Pausensong läuft...';
   }
-  overlay.style.display = 'flex';
   overlay.setAttribute('aria-hidden', 'false');
+  // Use rAF to ensure the class toggle triggers the CSS transition
   if (typeof requestAnimationFrame === 'function') {
     requestAnimationFrame(() => {
       overlay.classList.add('active');
@@ -596,11 +596,6 @@ export function hidePauseOverlay() {
   if (!overlay) return;
   overlay.classList.remove('active');
   overlay.setAttribute('aria-hidden', 'true');
-  setTimeout(() => {
-    if (!overlay.classList.contains('active')) {
-      overlay.style.display = 'none';
-    }
-  }, 300);
 }
 
 export function playSixSeven(triggerBtn) {
@@ -783,7 +778,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.6.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;

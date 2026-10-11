@@ -4,7 +4,7 @@
  * Version: 1.5.0
  */
 
-const CACHE_NAME = 'sv1845-dj-v1.5.0';
+const CACHE_NAME = 'sv1845-dj-v1.6.0';
 
 const APP_SHELL_ASSETS = [
   './',

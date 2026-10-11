@@ -89,7 +89,7 @@
 
     <!-- Main Soundboard Container -->
     <main id="board-container" class="board-container">
-      <div id="pause-overlay" class="pause-overlay" aria-hidden="true" style="display: none;">
+      <div id="pause-overlay" class="pause-overlay" aria-hidden="true">
         <div class="pause-overlay-content">
           <div class="pause-hourglass-icon">⏳</div>
           <div class="pause-overlay-title">Satzpause</div>
@@ -222,15 +222,17 @@
 
     <!-- Quick Action Footer Bar (Landscape / Desktop / Tablet) -->
     <footer id="quick-actions-bar" class="quick-footer footer-bar">
-      <div class="quick-group">
-        <button type="button" class="quick-btn btn-timeout" id="btn-timeout" data-action="timeout">
+      <!-- Timeout + Walk-On: stacked 2×1 column (half height each) -->
+      <div class="quick-group stacked-group">
+        <button type="button" class="quick-btn btn-timeout stacked-btn" id="btn-timeout" data-action="timeout">
           <span class="btn-main-text">⏱ Timeout</span>
         </button>
-        <button type="button" class="quick-btn btn-walkon" id="btn-walkon" data-action="walkon">
+        <button type="button" class="quick-btn btn-walkon stacked-btn" id="btn-walkon" data-action="walkon">
           <span class="btn-main-text">🚶 Walk-On</span>
         </button>
       </div>
 
+      <!-- Pause 1–4: 2×2 grid (half height, two columns) -->
       <div class="quick-group pause-slots-group" id="pause-slots-container">
         <button type="button" class="quick-btn btn-pause pause-slot-btn" id="btn-pause-1" data-slot="1" title="Pausensong 1">
           <span class="btn-main-text">Pause 1</span>
