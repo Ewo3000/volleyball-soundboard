@@ -889,11 +889,13 @@ footer.quick-actions {
 .btn-main-text {
   display: block;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.15;
+  text-align: center;
 }
 
 .btn-subtext {
@@ -901,12 +903,14 @@ footer.quick-actions {
   font-size: 0.72em;
   font-weight: 600;
   opacity: 0.88;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 3px;
   line-height: 1.1;
+  text-align: center;
 }
 
 

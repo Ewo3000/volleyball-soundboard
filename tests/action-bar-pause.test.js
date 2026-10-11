@@ -116,3 +116,9 @@ test('css minimizes grid padding and enlarges action buttons by 50%', () => {
   assert.match(css, /\.mobile-stop-btn[\s\S]*?z-index:\s*450/);
 });
 
+test('css allows 3-line text wrapping for action buttons', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.quick-btn[\s\S]*?white-space:\s*normal/);
+  assert.match(css, /\.btn-main-text[\s\S]*?white-space:\s*normal/);
+});
+
