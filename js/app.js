@@ -561,6 +561,9 @@ export function playPauseSlot(slotIndex, triggerBtn) {
   } else {
     clearActiveTriggerButton();
     console.warn(`Kein Pausensong für Slot ${slotIndex} vorhanden`);
+    if (typeof alert === 'function') {
+      alert(`Kein Pausensong für Slot ${slotIndex} geladen. Bitte Song mit Suffix _PAUSE${slotIndex} hochladen oder 'Demo-Sounds laden' klicken.`);
+    }
   }
 }
 
@@ -577,14 +580,7 @@ export function showPauseOverlay(track) {
     trackNameEl.textContent = title ? cleanTrackTitle(title) : 'Pausensong läuft...';
   }
   overlay.setAttribute('aria-hidden', 'false');
-  // Use rAF to ensure the class toggle triggers the CSS transition
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => {
-      overlay.classList.add('active');
-    });
-  } else {
-    overlay.classList.add('active');
-  }
+  overlay.classList.add('active');
 }
 
 /**
@@ -928,6 +924,14 @@ export function setupEventListeners() {
   // AudioEngine lifecycle callbacks
   audioEngine.onTrackStart = (track) => {
     updatePlayingUI(track ? track.id : null);
+    const isPause =
+      track &&
+      (track.category === 'pause' ||
+        /_PAUSE[_\s-]?\d*$/i.test(track.suffix || '') ||
+        /_(?:PAUSE[_\s-]?\d*|PAUSENSONG)$/i.test(stripExtension(track.name || '')));
+    if (isPause) {
+      showPauseOverlay(track);
+    }
   };
   audioEngine.onTrackStop = () => {
     updatePlayingUI(null);
