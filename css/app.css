@@ -862,6 +862,13 @@ footer.quick-actions {
   min-width: 0;
 }
 
+/* Stacked group: Timeout + Walk-On as 2×1 column (each half the bar height) */
+.stacked-group {
+  flex-direction: column;
+  gap: clamp(2px, 0.3vw, 5px);
+  align-items: stretch;
+}
+
 .quick-btn {
   height: clamp(108px, 14vh, 140px); /* 50% larger */
   padding: 4px clamp(3px, 0.6vw, 10px);
@@ -879,11 +886,19 @@ footer.quick-actions {
   transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
   box-shadow: var(--shadow-sm);
   white-space: normal;
-  flex: 1 1 0px;
+  flex: 1.5 1 0px; /* 50% wider than base */
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+/* Stacked buttons (Timeout + Walk-On): half height, fill column width */
+.stacked-btn {
+  height: clamp(50px, 6.5vh, 66px); /* ~half the bar height */
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: clamp(60px, 7vw, 100px);
 }
 
 .btn-main-text {
@@ -998,20 +1013,23 @@ footer.quick-actions {
 }
 
 .pause-slots-group {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
   gap: clamp(2px, 0.3vw, 5px);
   flex-shrink: 1;
   min-width: 0;
+  align-self: stretch;
 }
 .pause-slot-btn {
-  height: clamp(108px, 14vh, 140px); /* 50% larger */
-  min-width: clamp(56px, 6vw, 90px);
+  height: clamp(50px, 6.5vh, 66px); /* half the bar height — 2 rows fit */
+  min-width: clamp(44px, 5vw, 72px);
   padding: 2px clamp(4px, 0.5vw, 10px);
-  font-size: clamp(0.70rem, 0.85vw, 0.90rem);
-  flex: 1 1 auto;
+  font-size: clamp(0.68rem, 0.82vw, 0.88rem);
+  flex: unset; /* override .quick-btn flex — grid handles sizing */
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
 }
 
 /* 4. 6/7 (Orange) */
@@ -1043,7 +1061,7 @@ footer.quick-actions {
   background: var(--quick-indigo-light);
 }
 
-/* 6. Stop Button (Signal Red) - 50% Larger & Prominent */
+/* 6. Stop Button (Signal Red) - Prominent, no glow */
 .btn-stop,
 .quick-btn[data-action="stop"] {
   background: var(--quick-stop);
@@ -1053,7 +1071,6 @@ footer.quick-actions {
   padding: 4px clamp(10px, 1.5vw, 24px);
   min-width: clamp(80px, 9vw, 130px);
   height: clamp(108px, 14vh, 140px); /* 50% larger */
-  box-shadow: 0 0 18px var(--quick-stop-glow);
   letter-spacing: 0.04em;
   border: 1px solid rgba(255, 255, 255, 0.2);
   flex: 0 0 auto;
@@ -1065,7 +1082,14 @@ footer.quick-actions {
 .btn-stop:hover,
 .quick-btn[data-action="stop"]:hover {
   background: var(--quick-stop-hover);
-  box-shadow: 0 0 26px var(--quick-stop-glow);
+}
+
+/* Stop button must never shrink, even while .is-playing pulse is active */
+.btn-stop.is-playing,
+.quick-btn[data-action="stop"].is-playing {
+  animation: none !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 
@@ -1199,7 +1223,6 @@ footer.quick-actions {
     font-size: 1.25rem;
     font-weight: 900;
     border-radius: var(--radius-lg);
-    box-shadow: 0 0 20px var(--quick-stop-glow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1571,12 +1594,15 @@ footer.quick-actions {
   justify-content: center;
   z-index: 400;
   opacity: 0;
-  pointer-events: auto;
-  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s;
 }
 
 .pause-overlay.active {
   opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
 }
 
 .pause-overlay-content {

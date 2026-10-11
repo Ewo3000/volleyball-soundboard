@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-test('pause buttons are titled Pause 1 through Pause 4 and have doubled min-width', () => {
+test('pause buttons are titled Pause 1 through Pause 4 and are laid out in 2×2 grid', () => {
   const html = fs.readFileSync('index.html', 'utf8');
   assert.match(html, /id="btn-pause-1"[\s\S]*?Pause 1/);
   assert.match(html, /id="btn-pause-2"[\s\S]*?Pause 2/);
@@ -10,8 +10,11 @@ test('pause buttons are titled Pause 1 through Pause 4 and have doubled min-widt
   assert.match(html, /id="btn-pause-4"[\s\S]*?Pause 4/);
 
   const css = fs.readFileSync('css/app.css', 'utf8');
-  // Doubled from original 26px to at least 52px
-  assert.match(css, /\.pause-slot-btn[\s\S]*?min-width:\s*clamp\(\s*5[2-6]px/);
+  // Pause slots rendered as 2×2 grid
+  assert.match(css, /\.pause-slots-group[\s\S]*?display:\s*grid/);
+  assert.match(css, /\.pause-slots-group[\s\S]*?grid-template-columns:\s*1fr 1fr/);
+  // Pause slot button min-width (now smaller since grid handles layout)
+  assert.match(css, /\.pause-slot-btn[\s\S]*?min-width:\s*clamp\(\s*[34][0-9]px/);
 });
 
 test('pause hourglass overlay exists in DOM and functions are exported in js/app.js', async () => {
@@ -35,7 +38,7 @@ test('showPauseOverlay and hidePauseOverlay manipulate DOM elements correctly', 
   const originalDocument = globalThis.document;
   try {
     const overlay = {
-      style: { display: 'none' },
+      style: { display: '' },
       classList: {
         classes: new Set(),
         add(c) { this.classes.add(c); },
@@ -57,7 +60,7 @@ test('showPauseOverlay and hidePauseOverlay manipulate DOM elements correctly', 
     };
 
     showPauseOverlay({ name: 'Track01_PAUSE1.mp3' });
-    assert.equal(overlay.style.display, 'flex');
+    // Overlay uses CSS visibility now; aria-hidden is set to false
     assert.equal(overlay.getAttribute('aria-hidden'), 'false');
     assert.ok(trackNameEl.textContent.includes('Track01'));
 
@@ -108,12 +111,20 @@ test('css minimizes grid padding and enlarges action buttons by 50%', () => {
   assert.match(css, /#columns-grid[\s\S]*?padding:[\s\S]*?[4-8]px/);
   // Action bar enlarged to clamp(130px...
   assert.match(css, /#quick-actions-bar[\s\S]*?min-height:\s*clamp\(\s*130px/);
-  // Buttons enlarged to clamp(108px...
+  // Main quick buttons enlarged to clamp(108px...
   assert.match(css, /\.quick-btn[\s\S]*?height:\s*clamp\(\s*108px/);
-  assert.match(css, /\.pause-slot-btn[\s\S]*?height:\s*clamp\(\s*108px/);
+  // Pause slot buttons are half height (2-row grid)
+  assert.match(css, /\.pause-slot-btn[\s\S]*?height:\s*clamp\(\s*5[0-9]px/);
+  // Stacked buttons (Timeout/Walk-On) are half height
+  assert.match(css, /\.stacked-btn[\s\S]*?height:\s*clamp\(\s*5[0-9]px/);
+  // STOP button full height
   assert.match(css, /\.btn-stop[\s\S]*?height:\s*clamp\(\s*108px/);
   // Mobile stop button accessible above pause overlay
   assert.match(css, /\.mobile-stop-btn[\s\S]*?z-index:\s*450/);
+  // Stacked group lays out column direction
+  assert.match(css, /\.stacked-group[\s\S]*?flex-direction:\s*column/);
+  // Pause slots use 2x2 CSS grid
+  assert.match(css, /\.pause-slots-group[\s\S]*?grid-template-columns:\s*1fr 1fr/);
 });
 
 test('css allows 3-line text wrapping for action buttons', () => {
