@@ -997,11 +997,10 @@ footer.quick-actions {
   min-width: 0;
 }
 .pause-slot-btn {
-  min-width: clamp(26px, 2.8vw, 42px);
-  height: clamp(72px, 10vh, 96px); /* 50% larger */
-  padding: 2px clamp(3px, 0.4vw, 8px);
+  min-width: clamp(56px, 6vw, 90px);
+  padding: 2px clamp(4px, 0.5vw, 10px);
   font-size: clamp(0.70rem, 0.85vw, 0.90rem);
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
 }
