@@ -138,4 +138,11 @@ test('timeout and walk-on buttons have doubled min-width in stacked column', () 
   assert.match(css, /\.stacked-btn[\s\S]*?min-width:\s*clamp\(\s*120px/);
 });
 
+test('action buttons have +50% width via flex: 2.25', () => {
+  const css = fs.readFileSync('css/app.css', 'utf8');
+  assert.match(css, /\.quick-btn[\s\S]*?flex:\s*2\.25/);
+  assert.match(css, /\.quick-btn[\s\S]*?min-width:\s*clamp\(\s*75px/);
+});
+
+
 

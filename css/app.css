@@ -886,8 +886,8 @@ footer.quick-actions {
   transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
   box-shadow: var(--shadow-sm);
   white-space: normal;
-  flex: 1.5 1 0px; /* 50% wider than base */
-  min-width: 0;
+  flex: 2.25 1 0px; /* +50% wider (from 1.5) */
+  min-width: clamp(75px, 8.5vw, 120px);
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
