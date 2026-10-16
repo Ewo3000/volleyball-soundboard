@@ -1932,5 +1932,16 @@ footer.quick-actions {
   100% { opacity: 0.6; }
 }
 
-
-
+@media (prefers-reduced-motion: reduce) {
+  #startup-splash,
+  .startup-splash,
+  .splash-glow,
+  .splash-shockwave,
+  .splash-badge,
+  .splash-typography,
+  .sw-bar,
+  .splash-skip-hint {
+    animation: none !important;
+    transition: opacity 0.1s ease !important;
+  }
+}

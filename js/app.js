@@ -1309,10 +1309,24 @@ export function registerServiceWorker() {
   }
 }
 
+export let splashTimer = null;
+export let handleKeySkip = null;
+
 /**
  * Dismisses the startup matchday splash screen with a smooth fade-out.
  */
 export function dismissStartupSplash() {
+  if (splashTimer) {
+    clearTimeout(splashTimer);
+    splashTimer = null;
+  }
+  if (handleKeySkip) {
+    if (typeof window !== 'undefined' && window.removeEventListener) {
+      window.removeEventListener('keydown', handleKeySkip);
+    }
+    handleKeySkip = null;
+  }
+
   if (typeof document === 'undefined') return;
   const splash = document.getElementById('startup-splash');
   if (!splash || splash.classList.contains('dismissed')) return;
@@ -1329,6 +1343,17 @@ export function dismissStartupSplash() {
  * Initializes the startup splash animation with auto-dismiss and click-to-skip.
  */
 export function initStartupSplash() {
+  if (splashTimer) {
+    clearTimeout(splashTimer);
+    splashTimer = null;
+  }
+  if (handleKeySkip) {
+    if (typeof window !== 'undefined' && window.removeEventListener) {
+      window.removeEventListener('keydown', handleKeySkip);
+    }
+    handleKeySkip = null;
+  }
+
   if (typeof document === 'undefined') return;
   const splash = document.getElementById('startup-splash');
   if (!splash) return;
@@ -1337,8 +1362,22 @@ export function initStartupSplash() {
   splash.addEventListener('click', () => dismissStartupSplash());
   splash.addEventListener('touchend', () => dismissStartupSplash(), { passive: true });
 
+  // Keyboard accessibility (Escape, Enter, Space skips animation)
+  handleKeySkip = (e) => {
+    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+      dismissStartupSplash();
+      if (typeof window !== 'undefined' && window.removeEventListener && handleKeySkip) {
+        window.removeEventListener('keydown', handleKeySkip);
+        handleKeySkip = null;
+      }
+    }
+  };
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('keydown', handleKeySkip);
+  }
+
   // Auto-dismiss after 1600ms
-  setTimeout(() => {
+  splashTimer = setTimeout(() => {
     dismissStartupSplash();
   }, 1600);
 }
