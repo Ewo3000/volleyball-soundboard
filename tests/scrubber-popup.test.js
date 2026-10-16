@@ -185,3 +185,35 @@ describe('AudioEngine Seeking Methods', () => {
   });
 });
 
+describe('Scrubber Modal Markup and Styling', () => {
+  it('index.html contains #scrubber-modal with all required controls and attributes', () => {
+    const htmlPath = path.join(rootDir, 'index.html');
+    const html = fs.readFileSync(htmlPath, 'utf8');
+
+    assert.match(html, /id="scrubber-modal"/, 'Must contain #scrubber-modal');
+    assert.match(html, /id="scrubber-backdrop"/, 'Must contain #scrubber-backdrop');
+    assert.match(html, /id="scrubber-title"/, 'Must contain #scrubber-title');
+    assert.match(html, /id="btn-close-scrubber"/, 'Must contain #btn-close-scrubber');
+    assert.match(html, /id="scrubber-time-current"/, 'Must contain #scrubber-time-current');
+    assert.match(html, /id="scrubber-time-duration"/, 'Must contain #scrubber-time-duration');
+    assert.match(html, /id="scrubber-slider"/, 'Must contain #scrubber-slider');
+    assert.match(html, /id="btn-scrub-back"/, 'Must contain #btn-scrub-back');
+    assert.match(html, /id="btn-scrub-fwd"/, 'Must contain #btn-scrub-fwd');
+
+    // Header now-playing should have button role and tabindex
+    assert.match(html, /id="header-now-playing"[^>]*role="button"/, '#header-now-playing must have role="button"');
+    assert.match(html, /id="header-now-playing"[^>]*tabindex="0"/, '#header-now-playing must have tabindex="0"');
+  });
+
+  it('css/app.css styles #scrubber-modal, .scrubber-card, and range slider', () => {
+    const cssPath = path.join(rootDir, 'css/app.css');
+    const css = fs.readFileSync(cssPath, 'utf8');
+
+    assert.match(css, /\.scrubber-modal/, 'CSS must define .scrubber-modal');
+    assert.match(css, /\.scrubber-card/, 'CSS must define .scrubber-card');
+    assert.match(css, /\.scrubber-slider/, 'CSS must define .scrubber-slider');
+    assert.match(css, /\.btn-scrub-step/, 'CSS must define .btn-scrub-step');
+  });
+});
+
+
