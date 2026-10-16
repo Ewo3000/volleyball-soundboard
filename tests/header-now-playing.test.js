@@ -46,3 +46,197 @@ describe('Header Now-Playing Markup and Styles', () => {
   });
 });
 
+describe('Header Now-Playing JavaScript Lifecycle', () => {
+  it('updateNowPlayingHeader displays active song title and shows element', async () => {
+    // Setup minimal DOM mock
+    const container = {
+      style: { display: 'none' },
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      }
+    };
+    const titleEl = { textContent: '', title: '' };
+
+    const originalDoc = global.document;
+    try {
+      global.document = {
+        readyState: 'loading',
+        addEventListener: () => {},
+        getElementById(id) {
+          if (id === 'header-now-playing') return container;
+          if (id === 'now-playing-title') return titleEl;
+          return null;
+        },
+        querySelectorAll: () => []
+      };
+
+      const app = await import(`../js/app.js?t=${Date.now()}`);
+
+      // Call with track
+      app.updateNowPlayingHeader({ name: '01_Seven_Nation_Army_ANGRIFF.mp3', cleanTitle: 'Seven Nation Army' });
+      assert.equal(container.style.display, 'flex');
+      assert.equal(container.classList.contains('is-active'), true);
+      assert.equal(titleEl.textContent, 'Seven Nation Army');
+      assert.equal(titleEl.title, 'Seven Nation Army');
+
+      // Call with null / stop
+      app.updateNowPlayingHeader(null);
+      assert.equal(container.style.display, 'none');
+      assert.equal(container.classList.contains('is-active'), false);
+      assert.equal(titleEl.textContent, '');
+      assert.equal(titleEl.title, '');
+    } finally {
+      global.document = originalDoc;
+    }
+  });
+
+  it('updateNowPlayingHeader formats title using cleanTrackTitle when cleanTitle is missing', async () => {
+    const container = {
+      style: { display: 'none' },
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      }
+    };
+    const titleEl = { textContent: '', title: '' };
+
+    const originalDoc = global.document;
+    try {
+      global.document = {
+        readyState: 'loading',
+        addEventListener: () => {},
+        getElementById(id) {
+          if (id === 'header-now-playing') return container;
+          if (id === 'now-playing-title') return titleEl;
+          return null;
+        },
+        querySelectorAll: () => []
+      };
+
+      const app = await import(`../js/app.js?t=${Date.now()}`);
+
+      app.updateNowPlayingHeader({ name: 'Song_ACE.mp3' });
+      assert.equal(container.style.display, 'flex');
+      assert.equal(container.classList.contains('is-active'), true);
+      assert.equal(titleEl.textContent, 'Song');
+      assert.equal(titleEl.title, 'Song');
+    } finally {
+      global.document = originalDoc;
+    }
+  });
+
+  it('updatePlayingUI updates the header now-playing banner', async () => {
+    const container = {
+      style: { display: 'none' },
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      }
+    };
+    const titleEl = { textContent: '', title: '' };
+
+    const originalDoc = global.document;
+    try {
+      global.document = {
+        readyState: 'loading',
+        addEventListener: () => {},
+        getElementById(id) {
+          if (id === 'header-now-playing') return container;
+          if (id === 'now-playing-title') return titleEl;
+          return null;
+        },
+        querySelectorAll: () => []
+      };
+
+      const app = await import(`../js/app.js?t=${Date.now()}`);
+
+      const testTrack = { id: 'test-123', name: '03_Hyped_HIT.mp3', cleanTitle: 'Hyped' };
+      app.allTracks.length = 0;
+      app.allTracks.push(testTrack);
+
+      app.updatePlayingUI('test-123');
+      assert.equal(container.style.display, 'flex');
+      assert.equal(container.classList.contains('is-active'), true);
+      assert.equal(titleEl.textContent, 'Hyped');
+      assert.equal(titleEl.title, 'Hyped');
+
+      app.updatePlayingUI(null);
+      assert.equal(container.style.display, 'none');
+      assert.equal(container.classList.contains('is-active'), false);
+      assert.equal(titleEl.textContent, '');
+      assert.equal(titleEl.title, '');
+    } finally {
+      global.document = originalDoc;
+    }
+  });
+
+  it('audioEngine callbacks invoke updateNowPlayingHeader lifecycle correctly', async () => {
+    const container = {
+      style: { display: 'none' },
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      }
+    };
+    const titleEl = { textContent: '', title: '' };
+
+    const originalDoc = global.document;
+    const originalWin = global.window;
+    try {
+      global.window = {
+        addEventListener() {}
+      };
+      global.document = {
+        readyState: 'loading',
+        addEventListener: () => {},
+        getElementById(id) {
+          if (id === 'header-now-playing') return container;
+          if (id === 'now-playing-title') return titleEl;
+          return null;
+        },
+        querySelectorAll: () => [],
+        addEventListener: () => {}
+      };
+
+      const app = await import(`../js/app.js?t=${Date.now()}`);
+      app.setupEventListeners();
+
+      const testTrack = { id: 'track-cb', name: 'Callback_Test_ACE.mp3', cleanTitle: 'Callback Test' };
+
+      // onTrackStart
+      app.audioEngine.onTrackStart(testTrack);
+      assert.equal(container.style.display, 'flex');
+      assert.equal(titleEl.textContent, 'Callback Test');
+      assert.equal(titleEl.title, 'Callback Test');
+
+      // onTrackStop
+      app.audioEngine.onTrackStop();
+      assert.equal(container.style.display, 'none');
+      assert.equal(titleEl.textContent, '');
+      assert.equal(titleEl.title, '');
+
+      // onTrackStart again
+      app.audioEngine.onTrackStart(testTrack);
+      assert.equal(container.style.display, 'flex');
+
+      // onTrackEnd
+      app.audioEngine.onTrackEnd();
+      assert.equal(container.style.display, 'none');
+      assert.equal(titleEl.textContent, '');
+      assert.equal(titleEl.title, '');
+    } finally {
+      global.document = originalDoc;
+      global.window = originalWin;
+    }
+  });
+});
+
