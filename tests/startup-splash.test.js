@@ -54,6 +54,7 @@ test('dismissStartupSplash adds splash-fade-out and hides splash screen', async 
 
     initStartupSplash();
     assert.ok(splashEl.listeners['click'], 'Click listener registered on splash');
+    assert.ok(splashEl.listeners['touchend'], 'Touchend listener registered on splash');
 
     dismissStartupSplash();
     assert.ok(splashEl.classList.contains('splash-fade-out'));
