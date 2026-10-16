@@ -23,3 +23,43 @@ test('startup splash CSS styling and keyframes are defined', () => {
   assert.match(css, /@keyframes splash-wave/);
   assert.match(css, /@keyframes sw-dance/);
 });
+
+test('dismissStartupSplash adds splash-fade-out and hides splash screen', async () => {
+  const { dismissStartupSplash, initStartupSplash } = await import('../js/app.js');
+  assert.equal(typeof dismissStartupSplash, 'function');
+  assert.equal(typeof initStartupSplash, 'function');
+
+  const originalDoc = globalThis.document;
+  try {
+    const splashEl = {
+      classList: {
+        classes: new Set(),
+        add(c) { this.classes.add(c); },
+        remove(c) { this.classes.delete(c); },
+        contains(c) { return this.classes.has(c); }
+      },
+      attributes: {},
+      setAttribute(k, v) { this.attributes[k] = v; },
+      style: { display: '' },
+      listeners: {},
+      addEventListener(type, fn) { this.listeners[type] = fn; }
+    };
+
+    globalThis.document = {
+      getElementById(id) {
+        if (id === 'startup-splash') return splashEl;
+        return null;
+      }
+    };
+
+    initStartupSplash();
+    assert.ok(splashEl.listeners['click'], 'Click listener registered on splash');
+
+    dismissStartupSplash();
+    assert.ok(splashEl.classList.contains('splash-fade-out'));
+    assert.equal(splashEl.attributes['aria-hidden'], 'true');
+  } finally {
+    globalThis.document = originalDoc;
+  }
+});
+

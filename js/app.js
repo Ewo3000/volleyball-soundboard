@@ -1310,9 +1310,44 @@ export function registerServiceWorker() {
 }
 
 /**
+ * Dismisses the startup matchday splash screen with a smooth fade-out.
+ */
+export function dismissStartupSplash() {
+  if (typeof document === 'undefined') return;
+  const splash = document.getElementById('startup-splash');
+  if (!splash || splash.classList.contains('dismissed')) return;
+
+  splash.classList.add('splash-fade-out', 'dismissed');
+  splash.setAttribute('aria-hidden', 'true');
+
+  setTimeout(() => {
+    splash.style.display = 'none';
+  }, 350);
+}
+
+/**
+ * Initializes the startup splash animation with auto-dismiss and click-to-skip.
+ */
+export function initStartupSplash() {
+  if (typeof document === 'undefined') return;
+  const splash = document.getElementById('startup-splash');
+  if (!splash) return;
+
+  // Click or touch anywhere on splash screen skips animation immediately
+  splash.addEventListener('click', () => dismissStartupSplash());
+  splash.addEventListener('touchend', () => dismissStartupSplash(), { passive: true });
+
+  // Auto-dismiss after 1600ms
+  setTimeout(() => {
+    dismissStartupSplash();
+  }, 1600);
+}
+
+/**
  * Main Application Initialization
  */
 export async function initApp() {
+  initStartupSplash();
   try {
     await initDB();
     allTracks = await getAllTracks();
