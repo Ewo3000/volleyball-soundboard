@@ -215,10 +215,43 @@ export function renderAll() {
 }
 
 /**
+ * Updates the header Now-Playing banner indicator
+ * @param {Object|null} track
+ */
+export function updateNowPlayingHeader(track) {
+  if (typeof document === 'undefined') return;
+  const container = document.getElementById('header-now-playing');
+  const titleEl = document.getElementById('now-playing-title');
+  if (!container || !titleEl) return;
+
+  if (track) {
+    const title = track.cleanTitle || (typeof cleanTrackTitle === 'function' ? cleanTrackTitle(track.name || '') : track.name || '');
+    titleEl.textContent = title;
+    titleEl.title = title;
+    container.style.display = 'flex';
+    container.classList.add('is-active');
+  } else {
+    container.style.display = 'none';
+    container.classList.remove('is-active');
+    titleEl.textContent = '';
+    titleEl.title = '';
+  }
+}
+
+/**
  * Updates DOM playing indicators
  */
 export function updatePlayingUI(trackId) {
   if (typeof document === 'undefined') return;
+  const track = typeof trackId === 'object' && trackId !== null
+    ? trackId
+    : (trackId
+        ? ((typeof tracks !== 'undefined' && tracks.get ? tracks.get(trackId) : null) ||
+           (allTracks && allTracks.find ? allTracks.find((t) => t.id === trackId) : null) ||
+           (audioEngine.currentTrack?.id === trackId ? audioEngine.currentTrack : null))
+        : null);
+  updateNowPlayingHeader(track);
+
   const allSongButtons = document.querySelectorAll('.song-btn, .track-btn');
   allSongButtons.forEach((btn) => {
     if (trackId && btn.getAttribute('data-track-id') === trackId) {
@@ -825,7 +858,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.9.0';
+export const APP_VERSION = '1.10.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -975,6 +1008,7 @@ export function setupEventListeners() {
   // AudioEngine lifecycle callbacks
   audioEngine.onTrackStart = (track) => {
     updatePlayingUI(track ? track.id : null);
+    updateNowPlayingHeader(track);
     const isPause =
       track &&
       (track.category === 'pause' ||
@@ -986,11 +1020,13 @@ export function setupEventListeners() {
   };
   audioEngine.onTrackStop = () => {
     updatePlayingUI(null);
+    updateNowPlayingHeader(null);
     hidePauseOverlay();
     clearActiveTriggerButton();
   };
   audioEngine.onTrackEnd = () => {
     updatePlayingUI(null);
+    updateNowPlayingHeader(null);
     hidePauseOverlay();
     clearActiveTriggerButton();
   };
