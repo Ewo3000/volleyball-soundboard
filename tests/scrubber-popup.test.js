@@ -216,4 +216,176 @@ describe('Scrubber Modal Markup and Styling', () => {
   });
 });
 
+describe('Scrubber Modal Controller Lifecycle', () => {
+  it('formatTime formats seconds into M:SS correctly', async () => {
+    const { formatTime } = await import('../js/app.js');
+    assert.equal(formatTime(0), '0:00');
+    assert.equal(formatTime(5), '0:05');
+    assert.equal(formatTime(65), '1:05');
+    assert.equal(formatTime(125.7), '2:05');
+    assert.equal(formatTime(null), '0:00');
+    assert.equal(formatTime(NaN), '0:00');
+  });
+
+  it('openScrubberModal and closeScrubberModal toggle modal state and sync timer', async () => {
+    const modalEl = { style: { display: 'none' }, setAttribute: () => {} };
+    const titleEl = { textContent: '' };
+    const curTimeEl = { textContent: '' };
+    const durTimeEl = { textContent: '' };
+    const sliderEl = { value: 0 };
+    const headerEl = { focusCalled: false, focus() { this.focusCalled = true; } };
+
+    const originalDoc = globalThis.document;
+    try {
+      globalThis.document = {
+        readyState: 'loading',
+        addEventListener: () => {},
+        getElementById(id) {
+          if (id === 'scrubber-modal') return modalEl;
+          if (id === 'scrubber-title') return titleEl;
+          if (id === 'scrubber-time-current') return curTimeEl;
+          if (id === 'scrubber-time-duration') return durTimeEl;
+          if (id === 'scrubber-slider') return sliderEl;
+          if (id === 'header-now-playing') return headerEl;
+          return null;
+        },
+        querySelectorAll: () => []
+      };
+
+      const app = await import(`../js/app.js?t=${Date.now()}`);
+      app.openScrubberModal();
+      assert.equal(modalEl.style.display, 'flex');
+
+      app.closeScrubberModal();
+      assert.equal(modalEl.style.display, 'none');
+      assert.equal(headerEl.focusCalled, true, 'Should return focus to header-now-playing on close');
+    } finally {
+      globalThis.document = originalDoc;
+    }
+  });
+
+  it('setupEventListeners attaches scrubber modal events and auto-closes on track stop/end', async () => {
+    const app = await import(`../js/app.js?t=${Date.now()}`);
+    const originalDoc = globalThis.document;
+    const originalWindow = globalThis.window;
+
+    const listeners = {};
+    const registerListener = (el, event, fn) => {
+      if (!listeners[el]) listeners[el] = {};
+      listeners[el][event] = fn;
+    };
+
+    const makeEl = (id) => ({
+      id,
+      addEventListener(event, fn) { registerListener(id, event, fn); },
+      style: { display: 'none' },
+      setAttribute() {},
+      classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+      value: '0',
+      focusCalled: false,
+      focus() { this.focusCalled = true; }
+    });
+
+    const elements = {
+      'scrubber-modal': makeEl('scrubber-modal'),
+      'scrubber-backdrop': makeEl('scrubber-backdrop'),
+      'btn-close-scrubber': makeEl('btn-close-scrubber'),
+      'header-now-playing': makeEl('header-now-playing'),
+      'scrubber-slider': makeEl('scrubber-slider'),
+      'btn-scrub-back': makeEl('btn-scrub-back'),
+      'btn-scrub-fwd': makeEl('btn-scrub-fwd'),
+      'scrubber-time-current': makeEl('scrubber-time-current'),
+      'scrubber-time-duration': makeEl('scrubber-time-duration'),
+      'scrubber-title': makeEl('scrubber-title')
+    };
+
+    try {
+      globalThis.document = {
+        readyState: 'loading',
+        getElementById(id) {
+          return elements[id] || null;
+        },
+        querySelectorAll: () => [],
+        addEventListener(event, fn) { registerListener('document', event, fn); }
+      };
+      globalThis.window = {
+        addEventListener(event, fn) { registerListener('window', event, fn); }
+      };
+
+      app.setupEventListeners();
+
+      // Check header-now-playing click opens modal if track is active
+      assert.equal(typeof listeners['header-now-playing']?.['click'], 'function');
+      assert.equal(typeof listeners['header-now-playing']?.['keydown'], 'function');
+
+      // Click when no track is active does not open
+      app.audioEngine.currentTrack = null;
+      listeners['header-now-playing']['click']();
+      assert.equal(elements['scrubber-modal'].style.display, 'none');
+
+      // Click when track is active opens modal
+      app.audioEngine.currentTrack = { id: 't1', cleanTitle: 'Test Song' };
+      listeners['header-now-playing']['click']();
+      assert.equal(elements['scrubber-modal'].style.display, 'flex');
+
+      // Keydown Space opens modal when track active
+      elements['scrubber-modal'].style.display = 'none';
+      let defaultPrevented = false;
+      listeners['header-now-playing']['keydown']({ key: ' ', preventDefault() { defaultPrevented = true; } });
+      assert.equal(elements['scrubber-modal'].style.display, 'flex');
+      assert.equal(defaultPrevented, true);
+
+      // Check close triggers
+      assert.equal(typeof listeners['btn-close-scrubber']?.['click'], 'function');
+      assert.equal(typeof listeners['scrubber-backdrop']?.['click'], 'function');
+      assert.equal(typeof listeners['document']?.['keydown'], 'function');
+
+      // Close button closes modal
+      listeners['btn-close-scrubber']['click']();
+      assert.equal(elements['scrubber-modal'].style.display, 'none');
+
+      // Escape key closes modal
+      elements['scrubber-modal'].style.display = 'flex';
+      listeners['document']['keydown']({ key: 'Escape' });
+      assert.equal(elements['scrubber-modal'].style.display, 'none');
+
+      // Check slider and quick scrub buttons
+      assert.equal(typeof listeners['scrubber-slider']?.['input'], 'function');
+      assert.equal(typeof listeners['scrubber-slider']?.['change'], 'function');
+      assert.equal(typeof listeners['btn-scrub-back']?.['click'], 'function');
+      assert.equal(typeof listeners['btn-scrub-fwd']?.['click'], 'function');
+
+      // Slider input updates preview
+      app.audioEngine.currentAudioElement = { currentTime: 10, duration: 200 };
+      listeners['scrubber-slider']['input']({ target: { value: '50' } });
+      assert.equal(elements['scrubber-time-current'].textContent, '1:40'); // 50% of 200s = 100s -> 1:40
+
+      // Slider change seeks and commits
+      listeners['scrubber-slider']['change']({ target: { value: '75' } });
+      assert.equal(app.audioEngine.getCurrentTime(), 150); // 75% of 200s = 150s
+
+      // -5s and +5s step buttons
+      listeners['btn-scrub-back']['click']();
+      assert.equal(app.audioEngine.getCurrentTime(), 145);
+
+      listeners['btn-scrub-fwd']['click']();
+      assert.equal(app.audioEngine.getCurrentTime(), 150);
+
+      // Simulate track stop auto-closing modal
+      elements['scrubber-modal'].style.display = 'flex';
+      app.audioEngine.onTrackStop();
+      assert.equal(elements['scrubber-modal'].style.display, 'none');
+
+      // Simulate track end auto-closing modal
+      elements['scrubber-modal'].style.display = 'flex';
+      app.audioEngine.onTrackEnd();
+      assert.equal(elements['scrubber-modal'].style.display, 'none');
+    } finally {
+      globalThis.document = originalDoc;
+      globalThis.window = originalWindow;
+    }
+  });
+});
+
+
 

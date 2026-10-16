@@ -239,6 +239,78 @@ export function updateNowPlayingHeader(track) {
 }
 
 /**
+ * Scrubber Modal Controller
+ */
+export let scrubberInterval = null;
+export let isUserScrubbing = false;
+
+export function formatTime(seconds) {
+  if (!seconds || isNaN(seconds) || seconds < 0) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+export function openScrubberModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('scrubber-modal');
+  if (!modal) return;
+
+  const track = audioEngine.currentTrack || (audioEngine.getCurrentTrack ? audioEngine.getCurrentTrack() : null);
+  const titleEl = document.getElementById('scrubber-title');
+  if (titleEl) {
+    titleEl.textContent = track ? (track.cleanTitle || cleanTrackTitle(track.name || '')) : 'Kein Track läuft';
+  }
+
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+
+  syncScrubberUI();
+  if (scrubberInterval) clearInterval(scrubberInterval);
+  scrubberInterval = setInterval(syncScrubberUI, 150);
+}
+
+export function closeScrubberModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('scrubber-modal');
+  if (!modal) return;
+
+  const wasOpen = modal.style.display !== 'none';
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+  if (scrubberInterval) {
+    clearInterval(scrubberInterval);
+    scrubberInterval = null;
+  }
+  if (wasOpen) {
+    const headerBtn = document.getElementById('header-now-playing');
+    if (headerBtn && typeof headerBtn.focus === 'function') {
+      try {
+        headerBtn.focus();
+      } catch (_) {}
+    }
+  }
+}
+
+export function syncScrubberUI() {
+  if (typeof document === 'undefined' || isUserScrubbing) return;
+  const curTime = audioEngine.getCurrentTime();
+  const dur = audioEngine.getDuration();
+
+  const curEl = document.getElementById('scrubber-time-current');
+  const durEl = document.getElementById('scrubber-time-duration');
+  const slider = document.getElementById('scrubber-slider');
+
+  if (curEl) curEl.textContent = formatTime(curTime);
+  if (durEl) durEl.textContent = formatTime(dur);
+  if (slider && dur > 0) {
+    slider.value = ((curTime / dur) * 100).toFixed(1);
+  } else if (slider) {
+    slider.value = 0;
+  }
+}
+
+/**
  * Updates DOM playing indicators
  */
 export function updatePlayingUI(trackId) {
@@ -444,6 +516,8 @@ export function applyZoom(val) {
  */
 export function applyVolume(val) {
   const vol = Math.min(100, Math.max(0, Number(val)));
+  audioEngine.setMasterVolume(vol / 100);
+  if (typeof document === 'undefined') return;
   const volumeSlider = document.getElementById('volume-slider');
   const volumeDisplay = document.getElementById('volume-display');
 
@@ -453,7 +527,6 @@ export function applyVolume(val) {
   if (volumeDisplay) {
     volumeDisplay.textContent = `${vol}%`;
   }
-  audioEngine.setMasterVolume(vol / 100);
   saveSetting('volume', vol).catch((err) => console.warn('Save volume error:', err));
 }
 
@@ -1033,12 +1106,14 @@ export function setupEventListeners() {
     updateNowPlayingHeader(null);
     hidePauseOverlay();
     clearActiveTriggerButton();
+    closeScrubberModal();
   };
   audioEngine.onTrackEnd = () => {
     updatePlayingUI(null);
     updateNowPlayingHeader(null);
     hidePauseOverlay();
     clearActiveTriggerButton();
+    closeScrubberModal();
   };
 
   // One-time user gesture listener to acquire wake lock on first interaction
@@ -1339,6 +1414,79 @@ export function setupEventListeners() {
       drawer.setAttribute('aria-hidden', 'true');
     });
   }
+
+  // Scrubber modal event listeners
+  const headerNowPlaying = document.getElementById('header-now-playing');
+  if (headerNowPlaying && typeof headerNowPlaying.addEventListener === 'function') {
+    headerNowPlaying.addEventListener('click', () => {
+      if (audioEngine.getCurrentTrack() || audioEngine.currentTrack) {
+        openScrubberModal();
+      }
+    });
+    headerNowPlaying.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && (audioEngine.getCurrentTrack() || audioEngine.currentTrack)) {
+        e.preventDefault();
+        openScrubberModal();
+      }
+    });
+  }
+
+  const btnCloseScrubber = document.getElementById('btn-close-scrubber');
+  if (btnCloseScrubber && typeof btnCloseScrubber.addEventListener === 'function') {
+    btnCloseScrubber.addEventListener('click', () => closeScrubberModal());
+  }
+
+  const scrubberBackdrop = document.getElementById('scrubber-backdrop');
+  if (scrubberBackdrop && typeof scrubberBackdrop.addEventListener === 'function') {
+    scrubberBackdrop.addEventListener('click', () => closeScrubberModal());
+  }
+
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeScrubberModal();
+      }
+    });
+  }
+
+  const scrubberSlider = document.getElementById('scrubber-slider');
+  if (scrubberSlider && typeof scrubberSlider.addEventListener === 'function') {
+    scrubberSlider.addEventListener('input', (e) => {
+      isUserScrubbing = true;
+      const dur = audioEngine.getDuration();
+      const val = parseFloat(e.target.value) || 0;
+      const curEl = document.getElementById('scrubber-time-current');
+      if (curEl) {
+        const previewSecs = dur > 0 ? (val / 100) * dur : 0;
+        curEl.textContent = formatTime(previewSecs);
+      }
+    });
+
+    scrubberSlider.addEventListener('change', (e) => {
+      isUserScrubbing = false;
+      const dur = audioEngine.getDuration();
+      const val = parseFloat(e.target.value) || 0;
+      const targetSeconds = (val / 100) * dur;
+      audioEngine.seek(targetSeconds);
+      syncScrubberUI();
+    });
+  }
+
+  const btnScrubBack = document.getElementById('btn-scrub-back');
+  if (btnScrubBack && typeof btnScrubBack.addEventListener === 'function') {
+    btnScrubBack.addEventListener('click', () => {
+      audioEngine.seekRelative(-5);
+      syncScrubberUI();
+    });
+  }
+
+  const btnScrubFwd = document.getElementById('btn-scrub-fwd');
+  if (btnScrubFwd && typeof btnScrubFwd.addEventListener === 'function') {
+    btnScrubFwd.addEventListener('click', () => {
+      audioEngine.seekRelative(5);
+      syncScrubberUI();
+    });
+  }
 }
 
 /**
@@ -1468,7 +1616,7 @@ export async function initApp() {
 }
 
 // Auto-run when DOM is ready in browser
-if (typeof document !== 'undefined') {
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
   } else {
