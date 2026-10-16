@@ -3,7 +3,7 @@
   "short_name": "SV1845 DJ",
   "description": "DJ Pult und Soundboard für Volleyballspiele des SV 1845 Esslingen",
   "start_url": "./index.html",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "any",
   "background_color": "#0B0F17",
   "theme_color": "#0B0F17",
