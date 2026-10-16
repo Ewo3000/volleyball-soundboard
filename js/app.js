@@ -256,6 +256,8 @@ export function openScrubberModal() {
   const modal = document.getElementById('scrubber-modal');
   if (!modal) return;
 
+  isUserScrubbing = false;
+
   const track = audioEngine.currentTrack || (audioEngine.getCurrentTrack ? audioEngine.getCurrentTrack() : null);
   const titleEl = document.getElementById('scrubber-title');
   if (titleEl) {
@@ -264,6 +266,11 @@ export function openScrubberModal() {
 
   modal.style.display = 'flex';
   modal.setAttribute('aria-hidden', 'false');
+
+  const closeBtn = document.getElementById('btn-close-scrubber');
+  if (closeBtn && typeof closeBtn.focus === 'function') {
+    closeBtn.focus();
+  }
 
   syncScrubberUI();
   if (scrubberInterval) clearInterval(scrubberInterval);
@@ -274,6 +281,8 @@ export function closeScrubberModal() {
   if (typeof document === 'undefined') return;
   const modal = document.getElementById('scrubber-modal');
   if (!modal) return;
+
+  isUserScrubbing = false;
 
   const wasOpen = modal.style.display !== 'none';
   modal.style.display = 'none';
@@ -1079,8 +1088,18 @@ export async function loadDemoSoundpack() {
  */
 export function requestAutoFullscreen() {
   if (typeof document === 'undefined') return;
-  if (!document.fullscreenElement && document.documentElement?.requestFullscreen) {
-    document.documentElement.requestFullscreen().catch(() => {});
+  const doc = document;
+  const isFullscreen = doc.fullscreenElement || doc.webkitFullscreenElement;
+  if (!isFullscreen) {
+    const req = doc.documentElement?.requestFullscreen || doc.documentElement?.webkitRequestFullscreen;
+    if (req) {
+      try {
+        const res = req.call(doc.documentElement);
+        if (res && typeof res.catch === 'function') {
+          res.catch(() => {});
+        }
+      } catch (_) {}
+    }
   }
 }
 

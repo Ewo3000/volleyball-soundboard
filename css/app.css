@@ -246,12 +246,19 @@ header.header,
   transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, opacity 0.25s ease;
 }
 
-.header-now-playing:hover,
-.header-now-playing:focus-visible {
+.header-now-playing:hover {
   transform: scale(1.03);
   background: rgba(225, 29, 72, 0.22);
   box-shadow: 0 0 18px rgba(225, 29, 72, 0.4);
   outline: none;
+}
+
+.header-now-playing:focus-visible {
+  transform: scale(1.03);
+  background: rgba(225, 29, 72, 0.22);
+  box-shadow: 0 0 18px rgba(225, 29, 72, 0.4);
+  outline: 2px solid var(--flame-red);
+  outline-offset: 2px;
 }
 
 .header-now-playing:active {
@@ -2163,6 +2170,8 @@ footer.quick-actions {
 .scrubber-slider {
   width: 100%;
   height: 8px;
+  padding: 8px 0;
+  touch-action: manipulation;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.15);
   accent-color: var(--flame-red);

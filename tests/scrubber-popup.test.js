@@ -48,6 +48,25 @@ describe('Android Fullscreen Manifest and Gesture Hook', () => {
       assert.doesNotThrow(() => {
         app.requestAutoFullscreen();
       });
+
+      // Webkit fallback when requestFullscreen is missing
+      let webkitRequested = false;
+      globalThis.document.fullscreenElement = null;
+      globalThis.document.webkitFullscreenElement = null;
+      globalThis.document.documentElement = {
+        webkitRequestFullscreen: () => {
+          webkitRequested = true;
+          return Promise.resolve();
+        }
+      };
+      app.requestAutoFullscreen();
+      assert.equal(webkitRequested, true, 'Should have called webkitRequestFullscreen as fallback');
+
+      // When webkitFullscreenElement is active, should not request again
+      webkitRequested = false;
+      globalThis.document.webkitFullscreenElement = {};
+      app.requestAutoFullscreen();
+      assert.equal(webkitRequested, false, 'Should not request fullscreen if webkitFullscreenElement is active');
     } finally {
       globalThis.document = originalDoc;
     }
@@ -182,6 +201,20 @@ describe('AudioEngine Seeking Methods', () => {
 
     engine.seekRelative(10);
     assert.equal(engine.currentAudioElement.currentTime, 55);
+
+    // Defensive validation tests
+    engine.currentAudioElement.currentTime = 42;
+    engine.seek('invalid');
+    assert.equal(engine.currentAudioElement.currentTime, 42, 'Invalid string should not modify currentTime');
+
+    engine.seek(NaN);
+    assert.equal(engine.currentAudioElement.currentTime, 42, 'NaN should not modify currentTime');
+
+    engine.seek(undefined);
+    assert.equal(engine.currentAudioElement.currentTime, 42, 'undefined should not modify currentTime');
+
+    engine.seek('70');
+    assert.equal(engine.currentAudioElement.currentTime, 70, 'Numeric string should be parsed and applied');
   });
 });
 
@@ -197,8 +230,8 @@ describe('Scrubber Modal Markup and Styling', () => {
     assert.match(html, /id="scrubber-time-current"/, 'Must contain #scrubber-time-current');
     assert.match(html, /id="scrubber-time-duration"/, 'Must contain #scrubber-time-duration');
     assert.match(html, /id="scrubber-slider"/, 'Must contain #scrubber-slider');
-    assert.match(html, /id="btn-scrub-back"/, 'Must contain #btn-scrub-back');
-    assert.match(html, /id="btn-scrub-fwd"/, 'Must contain #btn-scrub-fwd');
+    assert.match(html, /id="btn-scrub-back"[^>]*aria-label="5 Sekunden zurückspulen"/, '#btn-scrub-back must have aria-label');
+    assert.match(html, /id="btn-scrub-fwd"[^>]*aria-label="5 Sekunden vorspulen"/, '#btn-scrub-fwd must have aria-label');
 
     // Header now-playing should have button role and tabindex
     assert.match(html, /id="header-now-playing"[^>]*role="button"/, '#header-now-playing must have role="button"');
@@ -213,6 +246,10 @@ describe('Scrubber Modal Markup and Styling', () => {
     assert.match(css, /\.scrubber-card/, 'CSS must define .scrubber-card');
     assert.match(css, /\.scrubber-slider/, 'CSS must define .scrubber-slider');
     assert.match(css, /\.btn-scrub-step/, 'CSS must define .btn-scrub-step');
+    assert.match(css, /\.header-now-playing:focus-visible[\s\S]*?outline:\s*2px solid var\(--flame-red\)/, 'focus-visible must have flame-red outline');
+    assert.match(css, /\.header-now-playing:focus-visible[\s\S]*?outline-offset:\s*2px/, 'focus-visible must have outline-offset');
+    assert.match(css, /\.scrubber-slider[\s\S]*?padding:\s*8px 0/, '.scrubber-slider must have padding');
+    assert.match(css, /\.scrubber-slider[\s\S]*?touch-action:\s*manipulation/, '.scrubber-slider must have touch-action: manipulation');
   });
 });
 
@@ -234,6 +271,7 @@ describe('Scrubber Modal Controller Lifecycle', () => {
     const durTimeEl = { textContent: '' };
     const sliderEl = { value: 0 };
     const headerEl = { focusCalled: false, focus() { this.focusCalled = true; } };
+    const closeBtnEl = { focusCalled: false, focus() { this.focusCalled = true; } };
 
     const originalDoc = globalThis.document;
     try {
@@ -247,6 +285,7 @@ describe('Scrubber Modal Controller Lifecycle', () => {
           if (id === 'scrubber-time-duration') return durTimeEl;
           if (id === 'scrubber-slider') return sliderEl;
           if (id === 'header-now-playing') return headerEl;
+          if (id === 'btn-close-scrubber') return closeBtnEl;
           return null;
         },
         querySelectorAll: () => []
@@ -255,6 +294,7 @@ describe('Scrubber Modal Controller Lifecycle', () => {
       const app = await import(`../js/app.js?t=${Date.now()}`);
       app.openScrubberModal();
       assert.equal(modalEl.style.display, 'flex');
+      assert.equal(closeBtnEl.focusCalled, true, 'Should focus close button on openScrubberModal');
 
       app.closeScrubberModal();
       assert.equal(modalEl.style.display, 'none');
@@ -370,6 +410,19 @@ describe('Scrubber Modal Controller Lifecycle', () => {
 
       listeners['btn-scrub-fwd']['click']();
       assert.equal(app.audioEngine.getCurrentTime(), 150);
+
+      // Verify isUserScrubbing resets on modal close and open
+      listeners['scrubber-slider']['input']({ target: { value: '80' } });
+      assert.equal(app.isUserScrubbing, true, 'isUserScrubbing should be true during drag');
+
+      app.closeScrubberModal();
+      assert.equal(app.isUserScrubbing, false, 'closeScrubberModal should reset isUserScrubbing to false');
+
+      listeners['scrubber-slider']['input']({ target: { value: '85' } });
+      assert.equal(app.isUserScrubbing, true, 'isUserScrubbing should be true during drag');
+
+      app.openScrubberModal();
+      assert.equal(app.isUserScrubbing, false, 'openScrubberModal should reset isUserScrubbing to false');
 
       // Simulate track stop auto-closing modal
       elements['scrubber-modal'].style.display = 'flex';

@@ -240,8 +240,10 @@ export class AudioEngine {
 
   seek(seconds) {
     if (!this.currentAudioElement) return;
+    const num = Number(seconds);
+    if (isNaN(num)) return;
     const duration = this.getDuration();
-    const target = duration > 0 ? Math.max(0, Math.min(seconds, duration)) : Math.max(0, seconds);
+    const target = duration > 0 ? Math.max(0, Math.min(num, duration)) : Math.max(0, num);
     try {
       this.currentAudioElement.currentTime = target;
     } catch (err) {
