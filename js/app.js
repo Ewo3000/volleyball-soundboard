@@ -1002,6 +1002,16 @@ export async function loadDemoSoundpack() {
 }
 
 /**
+ * Requests fullscreen mode on the document root if supported and not already in fullscreen
+ */
+export function requestAutoFullscreen() {
+  if (typeof document === 'undefined') return;
+  if (!document.fullscreenElement && document.documentElement?.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+}
+
+/**
  * Initializes DOM listeners and UI bindings
  */
 export function setupEventListeners() {
@@ -1038,6 +1048,13 @@ export function setupEventListeners() {
         wakeLock.requestLock().catch(() => {});
       }
     }, { once: true });
+
+    const appEl = document.getElementById('app') || document.body;
+    if (appEl && appEl.addEventListener) {
+      appEl.addEventListener('pointerdown', () => {
+        requestAutoFullscreen();
+      }, { once: true });
+    }
   }
 
   // Zoom controls
@@ -1362,6 +1379,8 @@ export function dismissStartupSplash() {
     }
     handleKeySkip = null;
   }
+
+  requestAutoFullscreen();
 
   if (typeof document === 'undefined') return;
   const splash = document.getElementById('startup-splash');
