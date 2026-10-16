@@ -143,3 +143,45 @@ describe('Android Fullscreen Manifest and Gesture Hook', () => {
     }
   });
 });
+
+describe('AudioEngine Seeking Methods', () => {
+  it('getCurrentTime, getDuration, seek, and seekRelative function properly', async () => {
+    const { AudioEngine } = await import('../js/audio-engine.js');
+    const engine = new AudioEngine();
+
+    // With no active audio element
+    assert.equal(engine.getCurrentTime(), 0);
+    assert.equal(engine.getDuration(), 0);
+
+    // Mock active audio element
+    engine.currentAudioElement = {
+      currentTime: 10,
+      duration: 100,
+      play: () => Promise.resolve(),
+      pause: () => {}
+    };
+
+    assert.equal(engine.getCurrentTime(), 10);
+    assert.equal(engine.getDuration(), 100);
+
+    // Absolute seek
+    engine.seek(45);
+    assert.equal(engine.currentAudioElement.currentTime, 45);
+
+    // Clamp to bounds
+    engine.seek(-10);
+    assert.equal(engine.currentAudioElement.currentTime, 0);
+
+    engine.seek(150);
+    assert.equal(engine.currentAudioElement.currentTime, 100);
+
+    // Relative seek
+    engine.currentAudioElement.currentTime = 50;
+    engine.seekRelative(-5);
+    assert.equal(engine.currentAudioElement.currentTime, 45);
+
+    engine.seekRelative(10);
+    assert.equal(engine.currentAudioElement.currentTime, 55);
+  });
+});
+

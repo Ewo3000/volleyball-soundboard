@@ -227,4 +227,30 @@ export class AudioEngine {
   getCurrentTrack() {
     return this.currentTrack;
   }
+
+  getCurrentTime() {
+    return this.currentAudioElement ? this.currentAudioElement.currentTime || 0 : 0;
+  }
+
+  getDuration() {
+    return this.currentAudioElement && !isNaN(this.currentAudioElement.duration)
+      ? this.currentAudioElement.duration
+      : 0;
+  }
+
+  seek(seconds) {
+    if (!this.currentAudioElement) return;
+    const duration = this.getDuration();
+    const target = duration > 0 ? Math.max(0, Math.min(seconds, duration)) : Math.max(0, seconds);
+    try {
+      this.currentAudioElement.currentTime = target;
+    } catch (err) {
+      console.warn('Seeking audio failed:', err);
+    }
+  }
+
+  seekRelative(deltaSeconds) {
+    this.seek(this.getCurrentTime() + deltaSeconds);
+  }
 }
+
