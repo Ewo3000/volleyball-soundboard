@@ -7,7 +7,7 @@ test('manifest.webmanifest exists and has valid PWA fields', () => {
   const manifest = JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
   assert.equal(manifest.name, 'SV 1845 Esslingen - Volleyball DJ');
   assert.equal(manifest.short_name, 'SV1845 DJ');
-  assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.display, 'fullscreen');
   assert.equal(manifest.theme_color, '#0B0F17');
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0);
 });
