@@ -825,7 +825,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.9.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -1309,10 +1309,84 @@ export function registerServiceWorker() {
   }
 }
 
+export let splashTimer = null;
+export let handleKeySkip = null;
+
+/**
+ * Dismisses the startup matchday splash screen with a smooth fade-out.
+ */
+export function dismissStartupSplash() {
+  if (splashTimer) {
+    clearTimeout(splashTimer);
+    splashTimer = null;
+  }
+  if (handleKeySkip) {
+    if (typeof window !== 'undefined' && window.removeEventListener) {
+      window.removeEventListener('keydown', handleKeySkip);
+    }
+    handleKeySkip = null;
+  }
+
+  if (typeof document === 'undefined') return;
+  const splash = document.getElementById('startup-splash');
+  if (!splash || splash.classList.contains('dismissed')) return;
+
+  splash.classList.add('splash-fade-out', 'dismissed');
+  splash.setAttribute('aria-hidden', 'true');
+
+  setTimeout(() => {
+    splash.style.display = 'none';
+  }, 350);
+}
+
+/**
+ * Initializes the startup splash animation with auto-dismiss and click-to-skip.
+ */
+export function initStartupSplash() {
+  if (splashTimer) {
+    clearTimeout(splashTimer);
+    splashTimer = null;
+  }
+  if (handleKeySkip) {
+    if (typeof window !== 'undefined' && window.removeEventListener) {
+      window.removeEventListener('keydown', handleKeySkip);
+    }
+    handleKeySkip = null;
+  }
+
+  if (typeof document === 'undefined') return;
+  const splash = document.getElementById('startup-splash');
+  if (!splash) return;
+
+  // Click or touch anywhere on splash screen skips animation immediately
+  splash.addEventListener('click', () => dismissStartupSplash());
+  splash.addEventListener('touchend', () => dismissStartupSplash(), { passive: true });
+
+  // Keyboard accessibility (Escape, Enter, Space skips animation)
+  handleKeySkip = (e) => {
+    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+      dismissStartupSplash();
+      if (typeof window !== 'undefined' && window.removeEventListener && handleKeySkip) {
+        window.removeEventListener('keydown', handleKeySkip);
+        handleKeySkip = null;
+      }
+    }
+  };
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('keydown', handleKeySkip);
+  }
+
+  // Auto-dismiss after 1600ms
+  splashTimer = setTimeout(() => {
+    dismissStartupSplash();
+  }, 1600);
+}
+
 /**
  * Main Application Initialization
  */
 export async function initApp() {
+  initStartupSplash();
   try {
     await initDB();
     allTracks = await getAllTracks();
