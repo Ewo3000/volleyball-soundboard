@@ -167,3 +167,29 @@ describe('Audio Loudness Normalization & Compressor Routing', () => {
     assert.equal(rawTrack.normGain, computed);
   });
 });
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+
+describe('Volume Normalization Markup and Styles', () => {
+  it('index.html contains #btn-auto-norm in header controls and song volume slider in #scrubber-modal', () => {
+    const html = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
+
+    assert.match(html, /id="btn-auto-norm"/, 'Must contain #btn-auto-norm');
+    assert.match(html, /id="scrubber-gain-slider"/, 'Must contain #scrubber-gain-slider');
+    assert.match(html, /id="scrubber-gain-value"/, 'Must contain #scrubber-gain-value');
+    assert.match(html, /id="btn-reset-track-gain"/, 'Must contain #btn-reset-track-gain');
+  });
+
+  it('css/app.css styles .btn-auto-norm and .scrubber-gain-section', () => {
+    const css = fs.readFileSync(path.join(rootDir, 'css/app.css'), 'utf8');
+
+    assert.match(css, /\.btn-auto-norm/, 'CSS must style .btn-auto-norm');
+    assert.match(css, /\.scrubber-gain-section/, 'CSS must style .scrubber-gain-section');
+    assert.match(css, /\.btn-reset-track-gain/, 'CSS must style .btn-reset-track-gain');
+  });
+});

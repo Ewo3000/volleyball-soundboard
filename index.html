@@ -107,6 +107,9 @@
             <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100">
             <span class="volume-value" id="volume-display">100%</span>
           </div>
+          <button type="button" class="btn-header-tool btn-auto-norm is-active" id="btn-auto-norm" aria-pressed="true" title="Automatische Lautstärke-Angleichung (Normalizer & Limiter) ein-/ausschalten">
+            ⚖️ Auto-Pegel
+          </button>
           <button type="button" class="btn-header-tool btn-reset-counts" id="btn-reset-counts" title="Alle Play-Counts zurücksetzen">
             Reset
           </button>
@@ -357,6 +360,16 @@
             <button type="button" class="btn-scrub-step" id="btn-scrub-fwd" title="5 Sekunden vor" aria-label="5 Sekunden vorspulen">
               +5s ⏩
             </button>
+          </div>
+          <div class="scrubber-gain-section">
+            <div class="scrubber-gain-header">
+              <label for="scrubber-gain-slider" class="scrubber-gain-label">🔊 Song-Lautstärke</label>
+              <div class="scrubber-gain-meta">
+                <span class="scrubber-gain-value" id="scrubber-gain-value">100%</span>
+                <button type="button" class="btn-reset-track-gain" id="btn-reset-track-gain" title="Song-Lautstärke auf 100% zurücksetzen">Reset</button>
+              </div>
+            </div>
+            <input type="range" class="scrubber-slider scrubber-gain-slider" id="scrubber-gain-slider" min="20" max="200" value="100" step="5" aria-label="Song-Lautstärke">
           </div>
         </div>
       </div>

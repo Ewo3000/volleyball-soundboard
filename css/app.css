@@ -2213,6 +2213,82 @@ footer.quick-actions {
   transform: translateY(1px);
 }
 
+/* Header Auto-Normalization Toggle Button */
+.btn-auto-norm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-auto-norm.is-active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #34d399;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.22);
+}
+
+.btn-auto-norm.is-active:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+/* Scrubber Per-Track Gain Section */
+.scrubber-gain-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.scrubber-gain-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.scrubber-gain-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-silver);
+}
+
+.scrubber-gain-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scrubber-gain-value {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-white);
+  font-variant-numeric: tabular-nums;
+  min-width: 42px;
+  text-align: right;
+}
+
+.btn-reset-track-gain {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-silver);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-reset-track-gain:hover {
+  background: rgba(225, 29, 72, 0.25);
+  border-color: var(--flame-red);
+  color: #fff;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scrubber-card {
     animation: none !important;
