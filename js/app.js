@@ -26,7 +26,9 @@ import {
 
 import {
   AudioEngine,
-  pickLeastPlayedRandomTrack
+  pickLeastPlayedRandomTrack,
+  EQ_PRESETS,
+  NORM_VERSION
 } from './audio-engine.js';
 
 import { WakeLockManager } from './wake-lock.js';
@@ -448,18 +450,20 @@ export async function handlePlayTrack(track) {
 
     await audioEngine.playTrack(track);
 
-    if (typeof track.normGain !== 'number' || isNaN(track.normGain)) {
+    if (
+      typeof track.normGain !== 'number' ||
+      isNaN(track.normGain) ||
+      track.normVersion !== NORM_VERSION
+    ) {
       audioEngine
         .analyzeTrackLoudness(track)
         .then((normGain) => {
           if (typeof normGain === 'number' && !isNaN(normGain)) {
-            updateTrackGain(track.id, { normGain }).catch(() => {});
+            updateTrackGain(track.id, { normGain, normVersion: NORM_VERSION }).catch(() => {});
           }
         })
         .catch(() => {});
     }
-
-    scheduleBackgroundNormalization();
 
     track.playCount = (typeof track.playCount === 'number' ? track.playCount : 0) + 1;
     track.lastPlayed = Date.now();
@@ -577,12 +581,88 @@ export function applyAutoNormalize(enabled) {
         btn.setAttribute('aria-pressed', String(isEnabled));
       }
     }
+    const statusText = document.getElementById('auto-norm-status-text');
+    if (statusText) {
+      statusText.textContent = isEnabled ? 'EIN' : 'AUS';
+    }
   }
   saveSetting('autoNormalize', isEnabled).catch((err) => console.warn('Save autoNormalize error:', err));
 }
 
 export function toggleAutoNormalize() {
   applyAutoNormalize(!audioEngine.getAutoNormalize());
+}
+
+/**
+ * Equalizer Preset selection & Sound/EQ Popup Modal Controller
+ */
+export function applyEqPreset(presetId) {
+  const activeId = audioEngine.setEqPreset(presetId);
+  const presetObj = EQ_PRESETS[activeId] || EQ_PRESETS.neutral;
+
+  if (typeof document !== 'undefined') {
+    const menuBtn = document.getElementById('btn-eq-menu');
+    const menuLabel = document.getElementById('eq-menu-label');
+    if (menuLabel) {
+      menuLabel.textContent = activeId === 'neutral' ? 'Sound / EQ' : `EQ: ${presetObj.name}`;
+    }
+    if (menuBtn && menuBtn.classList?.toggle) {
+      menuBtn.classList.toggle('is-active', activeId !== 'neutral');
+    }
+
+    const presetBtns = document.querySelectorAll?.('.eq-preset-btn');
+    presetBtns?.forEach?.((btn) => {
+      const id = btn.getAttribute?.('data-eq-preset');
+      const isSelected = id === activeId;
+      btn.classList?.toggle?.('is-active', isSelected);
+      btn.setAttribute?.('aria-checked', String(isSelected));
+    });
+  }
+
+  saveSetting('eqPreset', activeId).catch((err) => console.warn('Save eqPreset error:', err));
+  return activeId;
+}
+
+export function openEqModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('eq-modal');
+  if (!modal) return;
+
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+
+  const menuBtn = document.getElementById('btn-eq-menu');
+  if (menuBtn && menuBtn.setAttribute) {
+    menuBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  const closeBtn = document.getElementById('btn-close-eq');
+  if (closeBtn && typeof closeBtn.focus === 'function') {
+    try {
+      closeBtn.focus();
+    } catch (_) {}
+  }
+}
+
+export function closeEqModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('eq-modal');
+  if (!modal) return;
+
+  const wasOpen = modal.style.display !== 'none';
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+
+  const menuBtn = document.getElementById('btn-eq-menu');
+  if (menuBtn && menuBtn.setAttribute) {
+    menuBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  if (wasOpen && menuBtn && typeof menuBtn.focus === 'function') {
+    try {
+      menuBtn.focus();
+    } catch (_) {}
+  }
 }
 
 /**
@@ -614,19 +694,27 @@ export async function applyTrackCustomGain(percentVal) {
 let isBackgroundNormalizing = false;
 
 /**
- * Gently analyzes un-normalized tracks in the background one at a time
+ * Gently analyzes un-normalized tracks in the background one at a time when audio is idle
  */
 export async function scheduleBackgroundNormalization() {
   if (isBackgroundNormalizing) return;
   isBackgroundNormalizing = true;
   try {
     for (const track of allTracks) {
-      if (typeof track.normGain !== 'number' || isNaN(track.normGain)) {
+      // Never decode full audio buffers on the main AudioContext while a song is actively playing
+      if (audioEngine.getCurrentTrack()) {
+        break;
+      }
+      if (
+        typeof track.normGain !== 'number' ||
+        isNaN(track.normGain) ||
+        track.normVersion !== NORM_VERSION
+      ) {
         const normGain = await audioEngine.analyzeTrackLoudness(track);
         if (typeof normGain === 'number' && !isNaN(normGain)) {
-          await updateTrackGain(track.id, { normGain }).catch(() => {});
+          await updateTrackGain(track.id, { normGain, normVersion: NORM_VERSION }).catch(() => {});
         }
-        await new Promise((r) => setTimeout(r, 40));
+        await new Promise((r) => setTimeout(r, 80));
       }
     }
   } catch (_) {
@@ -836,9 +924,21 @@ export function triggerSixSevenAnimation() {
   container.className = 'fx-sixseven-container fx-sixseven';
   container.innerHTML = `
     <div class="fx-sixseven-burst"></div>
+    <div class="fx-sixseven-rays"></div>
     <div class="fx-sixseven-ring"></div>
     <div class="fx-sixseven-ring-outer"></div>
+    <div class="fx-sixseven-sparks" aria-hidden="true">
+      <span class="fx-spark s1"></span>
+      <span class="fx-spark s2"></span>
+      <span class="fx-spark s3"></span>
+      <span class="fx-spark s4"></span>
+      <span class="fx-spark s5"></span>
+      <span class="fx-spark s6"></span>
+      <span class="fx-spark s7"></span>
+      <span class="fx-spark s8"></span>
+    </div>
     <div class="fx-sixseven-content">
+      <div class="fx-sixseven-badge">⚡ MATCHDAY HYPE ⚡</div>
       <div class="fx-sixseven-number">6 / 7</div>
       <div class="fx-sixseven-subtitle">HYPE!</div>
     </div>
@@ -890,12 +990,44 @@ export function triggerAceAnimation() {
   container.className = 'fx-flame-container fx-flame';
   container.innerHTML = `
     <div class="fx-flame-vignette"></div>
+    <div class="fx-flame-shockwave"></div>
     <div class="fx-flame-pillar pillar-1"></div>
     <div class="fx-flame-pillar pillar-2"></div>
     <div class="fx-flame-pillar pillar-3"></div>
     <div class="fx-flame-pillar pillar-4"></div>
-    <div class="fx-flame-ball">🔥</div>
+    <div class="fx-flame-embers" aria-hidden="true">
+      <span class="fx-ember e1"></span>
+      <span class="fx-ember e2"></span>
+      <span class="fx-ember e3"></span>
+      <span class="fx-ember e4"></span>
+      <span class="fx-ember e5"></span>
+      <span class="fx-ember e6"></span>
+      <span class="fx-ember e7"></span>
+      <span class="fx-ember e8"></span>
+    </div>
+    <div class="fx-flame-ball" aria-hidden="true">
+      <svg class="fx-svg-icon fx-ace-svg" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="aceFireGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FEF08A"/>
+            <stop offset="45%" stop-color="#F97316"/>
+            <stop offset="85%" stop-color="#DC2626"/>
+            <stop offset="100%" stop-color="#7F1D1D" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="aceBallGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFFBEB"/>
+            <stop offset="50%" stop-color="#FDE047"/>
+            <stop offset="100%" stop-color="#EA580C"/>
+          </linearGradient>
+        </defs>
+        <circle cx="60" cy="60" r="56" fill="url(#aceFireGrad)"/>
+        <path d="M60 8C78 24 98 34 96 64C94 88 78 106 60 110C42 106 26 88 24 64C22 34 42 24 60 8Z" fill="#EF4444" fill-opacity="0.45"/>
+        <circle cx="60" cy="64" r="34" fill="url(#aceBallGrad)" stroke="#FEF08A" stroke-width="3"/>
+        <path d="M32 52C48 44 72 44 88 52M28 68C48 60 72 60 92 68M46 33C54 52 54 76 44 95M74 33C66 52 66 76 76 95" stroke="#9A3412" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    </div>
     <div class="fx-flame-text">🔥 ASS! 🔥</div>
+    <div class="fx-flame-subtext">SERVICE WINNER · SV 1845</div>
   `;
 
   overlay.appendChild(container);
@@ -924,10 +1056,37 @@ export function triggerBlockAnimation() {
   container.className = 'fx-shield-container fx-shield';
   container.innerHTML = `
     <div class="fx-shield-barrier"></div>
+    <div class="fx-shield-hexgrid"></div>
     <div class="fx-shield-shockwave shockwave-1"></div>
     <div class="fx-shield-shockwave shockwave-2"></div>
-    <div class="fx-shield-icon">🛡️</div>
+    <div class="fx-shield-sparks" aria-hidden="true">
+      <span class="fx-shield-spark sp1"></span>
+      <span class="fx-shield-spark sp2"></span>
+      <span class="fx-shield-spark sp3"></span>
+      <span class="fx-shield-spark sp4"></span>
+      <span class="fx-shield-spark sp5"></span>
+      <span class="fx-shield-spark sp6"></span>
+    </div>
+    <div class="fx-shield-icon" aria-hidden="true">
+      <svg class="fx-svg-icon fx-block-svg" viewBox="0 0 120 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F472B6"/>
+            <stop offset="50%" stop-color="#DB2777"/>
+            <stop offset="100%" stop-color="#6B21A8"/>
+          </linearGradient>
+          <linearGradient id="shieldRim" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#FDF2F8"/>
+            <stop offset="100%" stop-color="#F472B6"/>
+          </linearGradient>
+        </defs>
+        <path d="M60 8L106 26V62C106 92 85 113 60 122C35 113 14 92 14 62V26L60 8Z" fill="url(#shieldGrad)" stroke="url(#shieldRim)" stroke-width="4"/>
+        <path d="M60 18L96 32V60C96 84 79 101 60 109C41 101 24 84 24 60V32L60 18Z" stroke="#FBCFE8" stroke-opacity="0.6" stroke-width="2" stroke-dasharray="6 4"/>
+        <path d="M60 18V109M24 60H96" stroke="#FCE7F3" stroke-opacity="0.4" stroke-width="2"/>
+      </svg>
+    </div>
     <div class="fx-shield-text">🛡️ BLOCK! 🛡️</div>
+    <div class="fx-shield-subtext">MONSTER BLOCK · DEFENSE WALL</div>
   `;
 
   overlay.appendChild(container);
@@ -1023,7 +1182,7 @@ export function playRandomOpponent(triggerBtn) {
 export function stopAudio() {
   hidePauseOverlay();
   clearActiveTriggerButton();
-  audioEngine.stop(2000);
+  audioEngine.stop(3000);
 }
 
 export async function handleClearAll() {
@@ -1037,7 +1196,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.12.0';
+export const APP_VERSION = '1.13.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -1290,10 +1449,38 @@ export function setupEventListeners() {
     volumeSlider.addEventListener('input', (e) => applyVolume(e.target.value));
   }
 
-  // Auto-Normalization toggle button
+  // Auto-Normalization toggle button & Sound/EQ Popup Menu
   const btnAutoNorm = document.getElementById('btn-auto-norm');
   if (btnAutoNorm && typeof btnAutoNorm.addEventListener === 'function') {
     btnAutoNorm.addEventListener('click', () => toggleAutoNormalize());
+  }
+
+  const btnEqMenu = document.getElementById('btn-eq-menu');
+  if (btnEqMenu && typeof btnEqMenu.addEventListener === 'function') {
+    btnEqMenu.addEventListener('click', () => openEqModal());
+  }
+
+  const btnCloseEq = document.getElementById('btn-close-eq');
+  if (btnCloseEq && typeof btnCloseEq.addEventListener === 'function') {
+    btnCloseEq.addEventListener('click', () => closeEqModal());
+  }
+
+  const eqBackdrop = document.getElementById('eq-backdrop');
+  if (eqBackdrop && typeof eqBackdrop.addEventListener === 'function') {
+    eqBackdrop.addEventListener('click', () => closeEqModal());
+  }
+
+  const eqPresetsGrid = document.getElementById('eq-presets-grid');
+  if (eqPresetsGrid && typeof eqPresetsGrid.addEventListener === 'function') {
+    eqPresetsGrid.addEventListener('click', (e) => {
+      const btn = e.target?.closest?.('.eq-preset-btn');
+      if (btn) {
+        const presetId = btn.getAttribute('data-eq-preset');
+        if (presetId) {
+          applyEqPreset(presetId);
+        }
+      }
+    });
   }
 
   // Header banner toggle button
@@ -1567,6 +1754,7 @@ export function setupEventListeners() {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeScrubberModal();
+        closeEqModal();
       }
     });
   }
@@ -1739,6 +1927,9 @@ export async function initApp() {
 
     const savedAutoNorm = await getSetting('autoNormalize', true);
     applyAutoNormalize(savedAutoNorm);
+
+    const savedEqPreset = await getSetting('eqPreset', 'neutral');
+    applyEqPreset(savedEqPreset);
 
     const savedZoom = await getSetting('zoom', 100);
     applyZoom(savedZoom);

@@ -36,11 +36,12 @@ export class MemoryStorageEngine {
     }
   }
 
-  async updateTrackGain(id, { normGain, customGain } = {}) {
+  async updateTrackGain(id, { normGain, customGain, normVersion } = {}) {
     const t = this.tracks.get(id);
     if (t) {
       if (typeof normGain === 'number') t.normGain = normGain;
       if (typeof customGain === 'number') t.customGain = customGain;
+      if (typeof normVersion === 'number') t.normVersion = normVersion;
       this.tracks.set(id, t);
     }
   }
@@ -153,7 +154,7 @@ export class IndexedDBStorageEngine {
     });
   }
 
-  async updateTrackGain(id, { normGain, customGain } = {}) {
+  async updateTrackGain(id, { normGain, customGain, normVersion } = {}) {
     this._ensureDB();
     const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
     const store = tx.objectStore(TRACKS_STORE);
@@ -165,6 +166,7 @@ export class IndexedDBStorageEngine {
         if (track) {
           if (typeof normGain === 'number') track.normGain = normGain;
           if (typeof customGain === 'number') track.customGain = customGain;
+          if (typeof normVersion === 'number') track.normVersion = normVersion;
           store.put(track);
         }
       };

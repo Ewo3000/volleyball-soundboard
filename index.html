@@ -17,9 +17,14 @@
   <div id="app" class="app-container">
     <!-- Startup Matchday Splash Screen -->
     <div id="startup-splash" class="startup-splash" aria-hidden="false">
+      <div class="splash-hex-grid" aria-hidden="true"></div>
+      <div class="splash-spotlight spotlight-left" aria-hidden="true"></div>
+      <div class="splash-spotlight spotlight-right" aria-hidden="true"></div>
       <div class="splash-glow"></div>
       <div class="splash-shockwave"></div>
+      <div class="splash-shockwave splash-shockwave-2"></div>
       <div class="splash-badge">
+        <div class="splash-ring" aria-hidden="true"></div>
         <img src="assets/logo.jpg" alt="SV 1845 Esslingen Logo" class="splash-logo">
       </div>
       <div class="splash-typography">
@@ -27,6 +32,10 @@
         <div class="splash-title">VOLLEYBALL DJ</div>
         <div class="splash-tagline">🏐 Ready for Matchday</div>
         <div class="splash-soundwave">
+          <span class="sw-bar"></span>
+          <span class="sw-bar"></span>
+          <span class="sw-bar"></span>
+          <span class="sw-bar"></span>
           <span class="sw-bar"></span>
           <span class="sw-bar"></span>
           <span class="sw-bar"></span>
@@ -107,8 +116,8 @@
             <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100">
             <span class="volume-value" id="volume-display">100%</span>
           </div>
-          <button type="button" class="btn-header-tool btn-auto-norm is-active" id="btn-auto-norm" aria-pressed="true" title="Automatische Lautstärke-Angleichung (Normalizer & Limiter) ein-/ausschalten">
-            ⚖️ Auto-Pegel
+          <button type="button" class="btn-header-tool btn-eq-menu" id="btn-eq-menu" aria-haspopup="dialog" aria-expanded="false" title="Equalizer & Automatische Lautstärke-Angleichung öffnen">
+            🎛️ <span id="eq-menu-label">Sound / EQ</span>
           </button>
           <button type="button" class="btn-header-tool btn-reset-counts" id="btn-reset-counts" title="Alle Play-Counts zurücksetzen">
             Reset
@@ -370,6 +379,75 @@
               </div>
             </div>
             <input type="range" class="scrubber-slider scrubber-gain-slider" id="scrubber-gain-slider" min="20" max="200" value="100" step="5" aria-label="Song-Lautstärke">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sound & Equalizer Popup Modal -->
+    <div id="eq-modal" class="scrubber-modal eq-modal" style="display: none;" aria-hidden="true">
+      <div class="scrubber-backdrop eq-backdrop" id="eq-backdrop"></div>
+      <div class="scrubber-card eq-card" role="dialog" aria-modal="true" aria-labelledby="eq-modal-title">
+        <div class="scrubber-header eq-header">
+          <div class="scrubber-header-left">
+            <span class="scrubber-badge eq-badge">SOUND & EQ</span>
+            <h3 class="scrubber-title" id="eq-modal-title">Klang & Auto-Pegel</h3>
+          </div>
+          <button type="button" class="btn-close-scrubber" id="btn-close-eq" aria-label="Schließen">✕</button>
+        </div>
+        <div class="eq-body">
+          <!-- Auto-Pegel Section inside Popup -->
+          <div class="eq-norm-section">
+            <div class="eq-norm-info">
+              <span class="eq-norm-title">⚖️ Automatische Lautstärke (Auto-Pegel)</span>
+              <span class="eq-norm-desc">Gleicht leise & laute Lieder transparent auf Stadion-Pegel an</span>
+            </div>
+            <button type="button" class="btn-header-tool btn-auto-norm is-active" id="btn-auto-norm" aria-pressed="true" title="Automatische Lautstärke-Angleichung ein-/ausschalten">
+              <span class="auto-norm-dot"></span>
+              <span id="auto-norm-status-text">EIN</span>
+            </button>
+          </div>
+
+          <!-- 5 Equalizer Presets -->
+          <div class="eq-presets-section">
+            <div class="eq-presets-label">🎚️ Equalizer-Vorlagen (5 Presets)</div>
+            <div class="eq-presets-grid" id="eq-presets-grid" role="radiogroup" aria-label="Equalizer-Vorlagen">
+              <button type="button" class="eq-preset-btn is-active" data-eq-preset="neutral" role="radio" aria-checked="true">
+                <span class="eq-preset-icon">🎚️</span>
+                <span class="eq-preset-text">
+                  <span class="eq-preset-name">Neutral</span>
+                  <span class="eq-preset-desc">Unveränderter Originalklang (0 dB)</span>
+                </span>
+              </button>
+              <button type="button" class="eq-preset-btn" data-eq-preset="stadium" role="radio" aria-checked="false">
+                <span class="eq-preset-icon">🏟️</span>
+                <span class="eq-preset-text">
+                  <span class="eq-preset-name">Stadion / Halle</span>
+                  <span class="eq-preset-desc">Weniger Hallen-Dröhnen, satter Kick-Bass & klare Höhen</span>
+                </span>
+              </button>
+              <button type="button" class="eq-preset-btn" data-eq-preset="bass" role="radio" aria-checked="false">
+                <span class="eq-preset-icon">🔥</span>
+                <span class="eq-preset-text">
+                  <span class="eq-preset-name">Bass Boost</span>
+                  <span class="eq-preset-desc">Kräftiger Tiefbass-Schub für Warm-Up & Einlauf</span>
+                </span>
+              </button>
+              <button type="button" class="eq-preset-btn" data-eq-preset="punch" role="radio" aria-checked="false">
+                <span class="eq-preset-icon">⚡</span>
+                <span class="eq-preset-text">
+                  <span class="eq-preset-name">Punch & Klarheit</span>
+                  <span class="eq-preset-desc">Maximale Durchsetzungskraft für Jingles & Rock</span>
+                </span>
+              </button>
+              <button type="button" class="eq-preset-btn" data-eq-preset="warm" role="radio" aria-checked="false">
+                <span class="eq-preset-icon">🎙️</span>
+                <span class="eq-preset-text">
+                  <span class="eq-preset-name">Warm / Lounge</span>
+                  <span class="eq-preset-desc">Sanfte Höhen & warmer Klang für Satzpausen</span>
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

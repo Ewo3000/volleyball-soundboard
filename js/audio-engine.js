@@ -1,7 +1,8 @@
 /**
  * Web Audio Engine for SV 1845 Esslingen DJ Pult
  * Handles Bluetooth latency optimization, 50ms track change micro-fade,
- * and 300ms smooth exponential stop fade.
+ * 3000ms smooth exponential stop fade, transparent loudness normalization,
+ * 5-preset 3-band Equalizer, and strict Web Audio node lifecycle cleanup.
  */
 
 export function pickLeastPlayedRandomTrack(tracks) {
@@ -26,10 +27,59 @@ export function pickLeastPlayedRandomTrack(tracks) {
   return candidates[randomIndex];
 }
 
-export const TARGET_RMS = 0.1585; // approx -16 dBFS
-export const MIN_NORM_GAIN = 0.35;
-export const MAX_NORM_GAIN = 2.5;
+export const NORM_VERSION = 2;
+export const TARGET_RMS = 0.25; // approx -12 dBFS (punchy stadium reference level)
+export const MIN_NORM_GAIN = 0.72; // gentle attenuation on ultra-loud masters
+export const MAX_NORM_GAIN = 2.4; // strong boost for quiet recordings
 const SILENCE_RMS_THRESHOLD = 0.00316; // approx -50 dBFS
+
+export const EQ_PRESETS = {
+  neutral: {
+    id: 'neutral',
+    name: 'Neutral',
+    icon: '🎚️',
+    desc: 'Unveränderter Originalklang (0 dB)',
+    low: 0,
+    mid: 0,
+    high: 0
+  },
+  stadium: {
+    id: 'stadium',
+    name: 'Stadion / Halle',
+    icon: '🏟️',
+    desc: 'Weniger Hallen-Dröhnen, satter Kick-Bass & klare Höhen',
+    low: 3.5,
+    mid: -2.0,
+    high: 3.0
+  },
+  bass: {
+    id: 'bass',
+    name: 'Bass Boost',
+    icon: '🔥',
+    desc: 'Kräftiger Tiefbass-Schub für Warm-Up & Einlauf',
+    low: 6.0,
+    mid: 0.0,
+    high: 2.0
+  },
+  punch: {
+    id: 'punch',
+    name: 'Punch & Klarheit',
+    icon: '⚡',
+    desc: 'Maximale Durchsetzungskraft für Jingles & Rock',
+    low: 3.0,
+    mid: 2.0,
+    high: 4.0
+  },
+  warm: {
+    id: 'warm',
+    name: 'Warm / Lounge',
+    icon: '🎙️',
+    desc: 'Sanfte Höhen & warmer Klang für Satzpausen',
+    low: 2.5,
+    mid: 0.5,
+    high: -2.5
+  }
+};
 
 /**
  * Computes a normalization gain factor from an AudioBuffer based on active RMS and peak level.
@@ -81,9 +131,9 @@ export function computeNormalizationGain(audioBuffer) {
 
   let rawGain = TARGET_RMS / activeRms;
 
-  // Allow headroom with DynamicsCompressorNode catching peaks up to 1.35x over 0.98
+  // Allow headroom with transparent brickwall limiter catching peaks up to 1.25x over 0.99
   if (rawGain > 1.0 && maxPeak > 0) {
-    const maxSafeBoost = Math.max(1.0, (0.98 / maxPeak) * 1.35);
+    const maxSafeBoost = Math.max(1.0, (0.99 / maxPeak) * 1.25);
     rawGain = Math.min(rawGain, maxSafeBoost);
   }
 
@@ -96,6 +146,10 @@ export class AudioEngine {
     this.audioCtx = null;
     this.masterGain = null;
     this.compressor = null;
+    this.eqLow = null;
+    this.eqMid = null;
+    this.eqHigh = null;
+    this.eqPreset = 'neutral';
     this.currentSource = null;
     this.currentTrackGain = null;
     this.currentAudioElement = null;
@@ -117,19 +171,42 @@ export class AudioEngine {
 
       if (AudioCtxClass) {
         this.audioCtx = new AudioCtxClass();
+        const now = this.audioCtx.currentTime || 0;
+
         this.masterGain = this.audioCtx.createGain();
-        this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
+        this.masterGain.gain.setValueAtTime(this.volume, now);
         this.masterGain.connect(this.audioCtx.destination);
 
+        // Transparent brickwall ceiling limiter (-2.0 dB threshold) to prevent clipping without dulling transients
         if (typeof this.audioCtx.createDynamicsCompressor === 'function') {
           this.compressor = this.audioCtx.createDynamicsCompressor();
-          const now = this.audioCtx.currentTime || 0;
-          this.compressor.threshold?.setValueAtTime?.(-14, now);
-          this.compressor.knee?.setValueAtTime?.(10, now);
-          this.compressor.ratio?.setValueAtTime?.(4, now);
-          this.compressor.attack?.setValueAtTime?.(0.003, now);
-          this.compressor.release?.setValueAtTime?.(0.2, now);
+          this.compressor.threshold?.setValueAtTime?.(-2.0, now);
+          this.compressor.knee?.setValueAtTime?.(3.0, now);
+          this.compressor.ratio?.setValueAtTime?.(12.0, now);
+          this.compressor.attack?.setValueAtTime?.(0.015, now);
+          this.compressor.release?.setValueAtTime?.(0.15, now);
           this.compressor.connect(this.masterGain);
+        }
+
+        // 3-Band Equalizer (Low-Shelf 80Hz, Peaking 1kHz, High-Shelf 4kHz)
+        if (typeof this.audioCtx.createBiquadFilter === 'function') {
+          this.eqLow = this.audioCtx.createBiquadFilter();
+          this.eqLow.type = 'lowshelf';
+          this.eqLow.frequency?.setValueAtTime?.(80, now);
+
+          this.eqMid = this.audioCtx.createBiquadFilter();
+          this.eqMid.type = 'peaking';
+          this.eqMid.frequency?.setValueAtTime?.(1000, now);
+          this.eqMid.Q?.setValueAtTime?.(0.9, now);
+
+          this.eqHigh = this.audioCtx.createBiquadFilter();
+          this.eqHigh.type = 'highshelf';
+          this.eqHigh.frequency?.setValueAtTime?.(4000, now);
+
+          this.eqLow.connect(this.eqMid);
+          this.eqMid.connect(this.eqHigh);
+          this.eqHigh.connect(this.compressor || this.masterGain);
+          this._applyEqFilterGains();
         }
       }
     }
@@ -137,6 +214,44 @@ export class AudioEngine {
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume();
     }
+  }
+
+  _applyEqFilterGains() {
+    const preset = EQ_PRESETS[this.eqPreset] || EQ_PRESETS.neutral;
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime || 0;
+    if (this.eqLow?.gain) {
+      if (typeof this.eqLow.gain.setValueAtTime === 'function') {
+        this.eqLow.gain.setValueAtTime(preset.low, now);
+      } else {
+        this.eqLow.gain.value = preset.low;
+      }
+    }
+    if (this.eqMid?.gain) {
+      if (typeof this.eqMid.gain.setValueAtTime === 'function') {
+        this.eqMid.gain.setValueAtTime(preset.mid, now);
+      } else {
+        this.eqMid.gain.value = preset.mid;
+      }
+    }
+    if (this.eqHigh?.gain) {
+      if (typeof this.eqHigh.gain.setValueAtTime === 'function') {
+        this.eqHigh.gain.setValueAtTime(preset.high, now);
+      } else {
+        this.eqHigh.gain.value = preset.high;
+      }
+    }
+  }
+
+  setEqPreset(presetId) {
+    const validId = EQ_PRESETS[presetId] ? presetId : 'neutral';
+    this.eqPreset = validId;
+    this._applyEqFilterGains();
+    return this.eqPreset;
+  }
+
+  getEqPreset() {
+    return this.eqPreset;
   }
 
   setAutoNormalize(enabled) {
@@ -174,7 +289,11 @@ export class AudioEngine {
 
   async analyzeTrackLoudness(track) {
     if (!track) return 1.0;
-    if (typeof track.normGain === 'number' && !isNaN(track.normGain)) {
+    if (
+      typeof track.normGain === 'number' &&
+      !isNaN(track.normGain) &&
+      track.normVersion === NORM_VERSION
+    ) {
       return track.normGain;
     }
 
@@ -201,6 +320,7 @@ export class AudioEngine {
       const audioBuffer = await this.audioCtx.decodeAudioData(arrayBuffer);
       const normGain = computeNormalizationGain(audioBuffer);
       track.normGain = normGain;
+      track.normVersion = NORM_VERSION;
       if (this.currentTrack && this.currentTrack.id === track.id) {
         this.updateCurrentTrackGain();
       }
@@ -225,6 +345,38 @@ export class AudioEngine {
 
   pickRandomTrack(tracks) {
     return pickLeastPlayedRandomTrack(tracks);
+  }
+
+  _cleanupAudioChain({ audio, source, trackGain, objectUrl } = {}) {
+    if (source && typeof source.disconnect === 'function') {
+      try {
+        source.disconnect();
+      } catch (_) {}
+    }
+    if (trackGain && typeof trackGain.disconnect === 'function') {
+      try {
+        trackGain.disconnect();
+      } catch (_) {}
+    }
+    if (audio) {
+      try {
+        audio.onended = null;
+        if (typeof audio.pause === 'function') {
+          audio.pause();
+        }
+        if (typeof audio.removeAttribute === 'function') {
+          audio.removeAttribute('src');
+        }
+        if (typeof audio.load === 'function') {
+          audio.load();
+        }
+      } catch (_) {}
+    }
+    if (objectUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+      try {
+        URL.revokeObjectURL(objectUrl);
+      } catch (_) {}
+    }
   }
 
   async playTrack(track) {
@@ -267,10 +419,12 @@ export class AudioEngine {
       this.currentAudioElement = audio;
 
       const targetGain = this.getEffectiveTrackGain(track);
+      let source = null;
+      let trackGain = null;
 
       if (this.audioCtx && this.masterGain) {
-        const source = this.audioCtx.createMediaElementSource(audio);
-        const trackGain = this.audioCtx.createGain();
+        source = this.audioCtx.createMediaElementSource(audio);
+        trackGain = this.audioCtx.createGain();
 
         // 20ms micro fade-in to effective track gain
         const now = this.audioCtx.currentTime;
@@ -278,11 +432,8 @@ export class AudioEngine {
         trackGain.gain.exponentialRampToValueAtTime(targetGain, now + 0.02);
 
         source.connect(trackGain);
-        if (this.autoNormalize && this.compressor) {
-          trackGain.connect(this.compressor);
-        } else {
-          trackGain.connect(this.masterGain);
-        }
+        const inputTarget = this.eqLow || this.compressor || this.masterGain;
+        trackGain.connect(inputTarget);
 
         this.currentSource = source;
         this.currentTrackGain = trackGain;
@@ -290,18 +441,24 @@ export class AudioEngine {
         audio.volume = Math.max(0, Math.min(1, this.volume * targetGain));
       }
 
+      const boundObjectUrl = this.currentObjectUrl;
       audio.onended = () => {
-        if (this.currentObjectUrl) {
-          if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-            URL.revokeObjectURL(this.currentObjectUrl);
-          }
+        if (this.currentObjectUrl === boundObjectUrl) {
           this.currentObjectUrl = null;
         }
         const finishedTrack = this.currentTrack;
-        this.currentTrack = null;
-        this.currentAudioElement = null;
-        this.currentSource = null;
-        this.currentTrackGain = null;
+        if (this.currentAudioElement === audio) {
+          this.currentTrack = null;
+          this.currentAudioElement = null;
+          this.currentSource = null;
+          this.currentTrackGain = null;
+        }
+        this._cleanupAudioChain({
+          audio,
+          source,
+          trackGain,
+          objectUrl: boundObjectUrl
+        });
         if (this.onTrackEnd) this.onTrackEnd(finishedTrack);
       };
 
@@ -323,12 +480,14 @@ export class AudioEngine {
     }
   }
 
-  stop(fadeDurationMs = 2000) {
-    if (this.currentObjectUrl) {
+  stop(fadeDurationMs = 3000) {
+    const objectUrlToRevoke = this.currentObjectUrl;
+    this.currentObjectUrl = null;
+
+    if (objectUrlToRevoke) {
       if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(this.currentObjectUrl);
+        URL.revokeObjectURL(objectUrlToRevoke);
       }
-      this.currentObjectUrl = null;
     }
 
     if (!this.currentAudioElement) {
@@ -339,6 +498,7 @@ export class AudioEngine {
 
     const audio = this.currentAudioElement;
     audio.onended = null;
+    const source = this.currentSource;
     const trackGain = this.currentTrackGain;
     const audioCtx = this.audioCtx;
 
@@ -359,6 +519,7 @@ export class AudioEngine {
         try {
           audio.currentTime = 0;
         } catch (_) {}
+        this._cleanupAudioChain({ audio, source, trackGain });
       }, fadeDurationMs);
     } else {
       if (typeof audio.pause === 'function') {
@@ -367,6 +528,7 @@ export class AudioEngine {
       try {
         audio.currentTime = 0;
       } catch (_) {}
+      this._cleanupAudioChain({ audio, source, trackGain });
     }
 
     this.currentTrack = null;
@@ -410,4 +572,3 @@ export class AudioEngine {
     this.seek(this.getCurrentTime() + deltaSeconds);
   }
 }
-

@@ -107,7 +107,7 @@ test('processSelectedFiles prevents duplicate files from being imported repeated
   assert.equal(stored.length, 3, 'in-batch duplicates must be deduplicated');
 });
 
-test('stopAudio fades out with 2.0 seconds (2000ms) duration', () => {
+test('stopAudio fades out with 3.0 seconds (3000ms) duration', () => {
   let capturedFade = null;
   const originalStop = audioEngine.stop;
   audioEngine.stop = (duration) => {
@@ -116,7 +116,7 @@ test('stopAudio fades out with 2.0 seconds (2000ms) duration', () => {
 
   try {
     stopAudio();
-    assert.equal(capturedFade, 2000, 'STOP fade-out duration must be exactly 2000ms (2 seconds)');
+    assert.equal(capturedFade, 3000, 'STOP fade-out duration must be exactly 3000ms (3 seconds)');
   } finally {
     audioEngine.stop = originalStop;
   }
