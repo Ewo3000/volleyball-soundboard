@@ -36,6 +36,15 @@ export class MemoryStorageEngine {
     }
   }
 
+  async updateTrackGain(id, { normGain, customGain } = {}) {
+    const t = this.tracks.get(id);
+    if (t) {
+      if (typeof normGain === 'number') t.normGain = normGain;
+      if (typeof customGain === 'number') t.customGain = customGain;
+      this.tracks.set(id, t);
+    }
+  }
+
   async resetAllPlayCounts() {
     for (const [id, t] of this.tracks.entries()) {
       t.playCount = 0;
@@ -144,6 +153,27 @@ export class IndexedDBStorageEngine {
     });
   }
 
+  async updateTrackGain(id, { normGain, customGain } = {}) {
+    this._ensureDB();
+    const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
+    const store = tx.objectStore(TRACKS_STORE);
+    const getReq = store.get(id);
+
+    return new Promise((resolve, reject) => {
+      getReq.onsuccess = () => {
+        const track = getReq.result;
+        if (track) {
+          if (typeof normGain === 'number') track.normGain = normGain;
+          if (typeof customGain === 'number') track.customGain = customGain;
+          store.put(track);
+        }
+      };
+      getReq.onerror = () => reject(getReq.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   async resetAllPlayCounts() {
     this._ensureDB();
     const tracks = await this.getAllTracks();
@@ -237,6 +267,11 @@ export async function getAllTracks() {
 export async function updateTrackPlayCount(id, playCount) {
   const engine = getDefaultStorage();
   return engine.updateTrackPlayCount(id, playCount);
+}
+
+export async function updateTrackGain(id, gainUpdates) {
+  const engine = getDefaultStorage();
+  return engine.updateTrackGain(id, gainUpdates);
 }
 
 export async function resetAllPlayCounts() {
