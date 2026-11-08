@@ -26,16 +26,83 @@ export function pickLeastPlayedRandomTrack(tracks) {
   return candidates[randomIndex];
 }
 
+export const TARGET_RMS = 0.1585; // approx -16 dBFS
+export const MIN_NORM_GAIN = 0.35;
+export const MAX_NORM_GAIN = 2.5;
+const SILENCE_RMS_THRESHOLD = 0.00316; // approx -50 dBFS
+
+/**
+ * Computes a normalization gain factor from an AudioBuffer based on active RMS and peak level.
+ */
+export function computeNormalizationGain(audioBuffer) {
+  if (!audioBuffer || typeof audioBuffer.getChannelData !== 'function') {
+    return 1.0;
+  }
+
+  const numChannels = audioBuffer.numberOfChannels || 1;
+  const length = audioBuffer.length || 0;
+  if (length === 0) return 1.0;
+
+  const blockSize = 1024;
+  let activeSumSquares = 0;
+  let activeSampleCount = 0;
+  let maxPeak = 0;
+
+  for (let ch = 0; ch < numChannels; ch++) {
+    const data = audioBuffer.getChannelData(ch);
+    if (!data || data.length === 0) continue;
+
+    // Step through blocks (stride by 1 for short buffers, up to 4 for huge buffers to stay fast)
+    const blockStride = data.length > 44100 * 30 ? 4 : 1;
+    for (let i = 0; i < data.length; i += blockSize * blockStride) {
+      const end = Math.min(i + blockSize, data.length);
+      let blockSum = 0;
+      for (let j = i; j < end; j++) {
+        const s = data[j];
+        const abs = s < 0 ? -s : s;
+        if (abs > maxPeak) maxPeak = abs;
+        blockSum += s * s;
+      }
+      const count = end - i;
+      const blockRms = Math.sqrt(blockSum / count);
+      if (blockRms >= SILENCE_RMS_THRESHOLD) {
+        activeSumSquares += blockSum;
+        activeSampleCount += count;
+      }
+    }
+  }
+
+  if (activeSampleCount === 0 || maxPeak === 0) {
+    return 1.0;
+  }
+
+  const activeRms = Math.sqrt(activeSumSquares / activeSampleCount);
+  if (activeRms <= 0) return 1.0;
+
+  let rawGain = TARGET_RMS / activeRms;
+
+  // Allow headroom with DynamicsCompressorNode catching peaks up to 1.35x over 0.98
+  if (rawGain > 1.0 && maxPeak > 0) {
+    const maxSafeBoost = Math.max(1.0, (0.98 / maxPeak) * 1.35);
+    rawGain = Math.min(rawGain, maxSafeBoost);
+  }
+
+  const clamped = Math.max(MIN_NORM_GAIN, Math.min(MAX_NORM_GAIN, rawGain));
+  return Math.round(clamped * 1000) / 1000;
+}
+
 export class AudioEngine {
   constructor() {
     this.audioCtx = null;
     this.masterGain = null;
+    this.compressor = null;
     this.currentSource = null;
     this.currentTrackGain = null;
     this.currentAudioElement = null;
     this.currentTrack = null;
     this.currentObjectUrl = null;
     this.volume = 1.0;
+    this.autoNormalize = true;
 
     this.onTrackStart = null;
     this.onTrackStop = null;
@@ -53,11 +120,93 @@ export class AudioEngine {
         this.masterGain = this.audioCtx.createGain();
         this.masterGain.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
         this.masterGain.connect(this.audioCtx.destination);
+
+        if (typeof this.audioCtx.createDynamicsCompressor === 'function') {
+          this.compressor = this.audioCtx.createDynamicsCompressor();
+          const now = this.audioCtx.currentTime || 0;
+          this.compressor.threshold?.setValueAtTime?.(-14, now);
+          this.compressor.knee?.setValueAtTime?.(10, now);
+          this.compressor.ratio?.setValueAtTime?.(4, now);
+          this.compressor.attack?.setValueAtTime?.(0.003, now);
+          this.compressor.release?.setValueAtTime?.(0.2, now);
+          this.compressor.connect(this.masterGain);
+        }
       }
     }
 
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume();
+    }
+  }
+
+  setAutoNormalize(enabled) {
+    this.autoNormalize = Boolean(enabled);
+    this.updateCurrentTrackGain();
+  }
+
+  getAutoNormalize() {
+    return this.autoNormalize;
+  }
+
+  getEffectiveTrackGain(track) {
+    if (!track) return 1.0;
+    const norm =
+      this.autoNormalize && typeof track.normGain === 'number' && !isNaN(track.normGain)
+        ? track.normGain
+        : 1.0;
+    const custom =
+      typeof track.customGain === 'number' && !isNaN(track.customGain)
+        ? track.customGain
+        : 1.0;
+    return Math.max(0.05, Math.min(4.0, norm * custom));
+  }
+
+  updateCurrentTrackGain() {
+    if (!this.currentTrack) return;
+    const targetGain = this.getEffectiveTrackGain(this.currentTrack);
+    if (this.currentTrackGain && this.audioCtx) {
+      const now = this.audioCtx.currentTime || 0;
+      this.currentTrackGain.gain.setValueAtTime(targetGain, now);
+    } else if (this.currentAudioElement) {
+      this.currentAudioElement.volume = Math.max(0, Math.min(1, this.volume * targetGain));
+    }
+  }
+
+  async analyzeTrackLoudness(track) {
+    if (!track) return 1.0;
+    if (typeof track.normGain === 'number' && !isNaN(track.normGain)) {
+      return track.normGain;
+    }
+
+    this.initAudioContext();
+    if (!this.audioCtx || typeof this.audioCtx.decodeAudioData !== 'function') {
+      return 1.0;
+    }
+
+    let arrayBuffer = null;
+    if (typeof ArrayBuffer !== 'undefined' && track.blob instanceof ArrayBuffer) {
+      arrayBuffer = track.blob.slice(0);
+    } else if (typeof Uint8Array !== 'undefined' && track.blob instanceof Uint8Array) {
+      arrayBuffer = track.blob.buffer.slice(
+        track.blob.byteOffset,
+        track.blob.byteOffset + track.blob.byteLength
+      );
+    } else if (track.blob && typeof track.blob.arrayBuffer === 'function') {
+      arrayBuffer = await track.blob.arrayBuffer();
+    }
+
+    if (!arrayBuffer) return 1.0;
+
+    try {
+      const audioBuffer = await this.audioCtx.decodeAudioData(arrayBuffer);
+      const normGain = computeNormalizationGain(audioBuffer);
+      track.normGain = normGain;
+      if (this.currentTrack && this.currentTrack.id === track.id) {
+        this.updateCurrentTrackGain();
+      }
+      return normGain;
+    } catch (_) {
+      return 1.0;
     }
   }
 
@@ -117,22 +266,28 @@ export class AudioEngine {
       const audio = new AudioConstructor(objectUrl);
       this.currentAudioElement = audio;
 
+      const targetGain = this.getEffectiveTrackGain(track);
+
       if (this.audioCtx && this.masterGain) {
         const source = this.audioCtx.createMediaElementSource(audio);
         const trackGain = this.audioCtx.createGain();
 
-        // 20ms micro fade-in
+        // 20ms micro fade-in to effective track gain
         const now = this.audioCtx.currentTime;
         trackGain.gain.setValueAtTime(0.001, now);
-        trackGain.gain.exponentialRampToValueAtTime(1.0, now + 0.02);
+        trackGain.gain.exponentialRampToValueAtTime(targetGain, now + 0.02);
 
         source.connect(trackGain);
-        trackGain.connect(this.masterGain);
+        if (this.autoNormalize && this.compressor) {
+          trackGain.connect(this.compressor);
+        } else {
+          trackGain.connect(this.masterGain);
+        }
 
         this.currentSource = source;
         this.currentTrackGain = trackGain;
       } else {
-        audio.volume = this.volume;
+        audio.volume = Math.max(0, Math.min(1, this.volume * targetGain));
       }
 
       audio.onended = () => {

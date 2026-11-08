@@ -67,3 +67,103 @@ describe('StorageEngine Track Gain Persistence', () => {
     assert.equal(putRecord.playCount, 5);
   });
 });
+
+describe('Audio Loudness Normalization & Compressor Routing', () => {
+  it('computeNormalizationGain boosts quiet buffers, attenuates loud buffers, and ignores silence', async () => {
+    const { computeNormalizationGain } = await import('../js/audio-engine.js');
+
+    // Empty / null buffer returns 1.0
+    assert.equal(computeNormalizationGain(null), 1.0);
+
+    // Quiet signal (amplitude 0.04 -> RMS ~0.04, target ~0.1585 -> gain > 1.5)
+    const quietSamples = new Float32Array(4096).fill(0.04);
+    const quietBuffer = {
+      numberOfChannels: 1,
+      length: quietSamples.length,
+      getChannelData: () => quietSamples
+    };
+    const quietGain = computeNormalizationGain(quietBuffer);
+    assert.ok(quietGain > 1.5 && quietGain <= 2.5, `Expected quietGain > 1.5, got ${quietGain}`);
+
+    // Loud signal (amplitude 0.6 -> RMS 0.6, target ~0.1585 -> gain < 0.5)
+    const loudSamples = new Float32Array(4096).fill(0.6);
+    const loudBuffer = {
+      numberOfChannels: 1,
+      length: loudSamples.length,
+      getChannelData: () => loudSamples
+    };
+    const loudGain = computeNormalizationGain(loudBuffer);
+    assert.ok(loudGain >= 0.35 && loudGain < 0.5, `Expected loudGain < 0.5, got ${loudGain}`);
+
+    // Silent signal returns 1.0
+    const silentSamples = new Float32Array(4096).fill(0);
+    const silentBuffer = {
+      numberOfChannels: 1,
+      length: silentSamples.length,
+      getChannelData: () => silentSamples
+    };
+    assert.equal(computeNormalizationGain(silentBuffer), 1.0);
+  });
+
+  it('AudioEngine applies normGain, customGain, autoNormalize toggle, and DynamicsCompressorNode', async () => {
+    const { AudioEngine } = await import('../js/audio-engine.js');
+    const engine = new AudioEngine();
+
+    assert.equal(engine.getAutoNormalize(), true);
+
+    const track = { id: 't_norm', name: 'Test.mp3', normGain: 1.5, customGain: 0.8 };
+    // 1.5 * 0.8 = 1.2
+    assert.ok(Math.abs(engine.getEffectiveTrackGain(track) - 1.2) < 0.001);
+
+    // When autoNormalize is disabled, only customGain is used
+    engine.setAutoNormalize(false);
+    assert.equal(engine.getAutoNormalize(), false);
+    assert.ok(Math.abs(engine.getEffectiveTrackGain(track) - 0.8) < 0.001);
+
+    engine.setAutoNormalize(true);
+
+    // Verify compressor node creation and live gain update
+    let lastGainTarget = 1.0;
+    engine.audioCtx = {
+      currentTime: 0,
+      state: 'running',
+      destination: {},
+      createGain() {
+        return {
+          gain: {
+            value: 1,
+            setValueAtTime(v) { this.value = v; lastGainTarget = v; },
+            exponentialRampToValueAtTime(v) { this.value = v; lastGainTarget = v; }
+          },
+          connect() {}
+        };
+      },
+      createDynamicsCompressor() {
+        return {
+          threshold: { setValueAtTime() {} },
+          knee: { setValueAtTime() {} },
+          ratio: { setValueAtTime() {} },
+          attack: { setValueAtTime() {} },
+          release: { setValueAtTime() {} },
+          connect() {}
+        };
+      },
+      decodeAudioData: async () => ({
+        numberOfChannels: 1,
+        length: 2048,
+        getChannelData: () => new Float32Array(2048).fill(0.05)
+      })
+    };
+
+    engine.currentTrack = track;
+    engine.currentTrackGain = engine.audioCtx.createGain();
+    engine.updateCurrentTrackGain();
+    assert.ok(Math.abs(lastGainTarget - 1.2) < 0.001);
+
+    // analyzeTrackLoudness decodes and sets track.normGain
+    const rawTrack = { id: 't_raw', name: 'Raw.mp3', blob: new Uint8Array([1, 2, 3, 4]) };
+    const computed = await engine.analyzeTrackLoudness(rawTrack);
+    assert.ok(typeof computed === 'number' && computed > 1.0);
+    assert.equal(rawTrack.normGain, computed);
+  });
+});
