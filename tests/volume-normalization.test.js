@@ -193,3 +193,84 @@ describe('Volume Normalization Markup and Styles', () => {
     assert.match(css, /\.btn-reset-track-gain/, 'CSS must style .btn-reset-track-gain');
   });
 });
+
+describe('Controller Auto-Normalize & Per-Track Gain Integration', () => {
+  it('applyAutoNormalize, toggleAutoNormalize, and applyTrackCustomGain update AudioEngine, UI, and DB', async () => {
+    const engine = new MemoryStorageEngine();
+    await engine.init();
+    setDefaultStorage(engine);
+
+    const btnAutoNorm = {
+      classes: new Set(['is-active']),
+      attrs: { 'aria-pressed': 'true' },
+      classList: {
+        toggle(c, force) {
+          if (force) btnAutoNorm.classes.add(c);
+          else btnAutoNorm.classes.delete(c);
+        },
+        contains(c) {
+          return btnAutoNorm.classes.has(c);
+        }
+      },
+      setAttribute(k, v) {
+        this.attrs[k] = v;
+      }
+    };
+    const gainSlider = { value: '100' };
+    const gainValue = { textContent: '100%' };
+    const modalEl = { style: { display: 'none' }, setAttribute() {} };
+    const titleEl = { textContent: '' };
+
+    const prevDoc = global.document;
+    global.document = {
+      getElementById(id) {
+        if (id === 'btn-auto-norm') return btnAutoNorm;
+        if (id === 'scrubber-gain-slider') return gainSlider;
+        if (id === 'scrubber-gain-value') return gainValue;
+        if (id === 'scrubber-modal') return modalEl;
+        if (id === 'scrubber-title') return titleEl;
+        return null;
+      },
+      querySelectorAll: () => []
+    };
+
+    try {
+      const app = await import(`../js/app.js?t=${Date.now()}`);
+
+      // Toggle auto-normalize off
+      app.toggleAutoNormalize();
+      assert.equal(app.audioEngine.getAutoNormalize(), false);
+      assert.equal(btnAutoNorm.classes.has('is-active'), false);
+      assert.equal(btnAutoNorm.attrs['aria-pressed'], 'false');
+
+      // Toggle auto-normalize back on
+      app.toggleAutoNormalize();
+      assert.equal(app.audioEngine.getAutoNormalize(), true);
+      assert.equal(btnAutoNorm.classes.has('is-active'), true);
+      assert.equal(btnAutoNorm.attrs['aria-pressed'], 'true');
+
+      // Per-track customGain adjustment
+      const track = { id: 't_custom', name: 'Song_Custom.mp3', cleanTitle: 'Song Custom', playCount: 1 };
+      await engine.saveTracks([track]);
+      app.audioEngine.currentTrack = track;
+
+      await app.applyTrackCustomGain(140);
+      assert.equal(track.customGain, 1.4);
+      assert.equal(gainValue.textContent, '140%');
+      assert.equal(String(gainSlider.value), '140');
+
+      const stored = await engine.getAllTracks();
+      assert.equal(stored[0].customGain, 1.4);
+
+      // openScrubberModal initializes gain slider to current track's customGain
+      gainSlider.value = '100';
+      gainValue.textContent = '100%';
+      app.openScrubberModal();
+      assert.equal(String(gainSlider.value), '140');
+      assert.equal(gainValue.textContent, '140%');
+      app.closeScrubberModal();
+    } finally {
+      global.document = prevDoc;
+    }
+  });
+});

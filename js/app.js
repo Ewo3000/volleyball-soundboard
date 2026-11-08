@@ -8,6 +8,7 @@ import {
   saveTracks,
   getAllTracks,
   updateTrackPlayCount,
+  updateTrackGain,
   resetAllPlayCounts,
   clearAllTracks,
   saveSetting,
@@ -264,6 +265,14 @@ export function openScrubberModal() {
     titleEl.textContent = track ? (track.cleanTitle || cleanTrackTitle(track.name || '')) : 'Kein Track läuft';
   }
 
+  const gainPercent = track && typeof track.customGain === 'number' && !isNaN(track.customGain)
+    ? Math.round(track.customGain * 100)
+    : 100;
+  const gainSlider = document.getElementById('scrubber-gain-slider');
+  const gainValue = document.getElementById('scrubber-gain-value');
+  if (gainSlider) gainSlider.value = String(gainPercent);
+  if (gainValue) gainValue.textContent = `${gainPercent}%`;
+
   modal.style.display = 'flex';
   modal.setAttribute('aria-hidden', 'false');
 
@@ -439,6 +448,19 @@ export async function handlePlayTrack(track) {
 
     await audioEngine.playTrack(track);
 
+    if (typeof track.normGain !== 'number' || isNaN(track.normGain)) {
+      audioEngine
+        .analyzeTrackLoudness(track)
+        .then((normGain) => {
+          if (typeof normGain === 'number' && !isNaN(normGain)) {
+            updateTrackGain(track.id, { normGain }).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+
+    scheduleBackgroundNormalization();
+
     track.playCount = (typeof track.playCount === 'number' ? track.playCount : 0) + 1;
     track.lastPlayed = Date.now();
     await updateTrackPlayCount(track.id, track.playCount);
@@ -537,6 +559,81 @@ export function applyVolume(val) {
     volumeDisplay.textContent = `${vol}%`;
   }
   saveSetting('volume', vol).catch((err) => console.warn('Save volume error:', err));
+}
+
+/**
+ * Automatic Loudness Normalization toggle
+ */
+export function applyAutoNormalize(enabled) {
+  const isEnabled = Boolean(enabled);
+  audioEngine.setAutoNormalize(isEnabled);
+  if (typeof document !== 'undefined') {
+    const btn = document.getElementById('btn-auto-norm');
+    if (btn) {
+      if (btn.classList?.toggle) {
+        btn.classList.toggle('is-active', isEnabled);
+      }
+      if (btn.setAttribute) {
+        btn.setAttribute('aria-pressed', String(isEnabled));
+      }
+    }
+  }
+  saveSetting('autoNormalize', isEnabled).catch((err) => console.warn('Save autoNormalize error:', err));
+}
+
+export function toggleAutoNormalize() {
+  applyAutoNormalize(!audioEngine.getAutoNormalize());
+}
+
+/**
+ * Per-Track Custom Volume adjustment (20% - 200%)
+ */
+export async function applyTrackCustomGain(percentVal) {
+  const pct = Math.min(200, Math.max(20, Math.round(Number(percentVal) || 100)));
+  const customGain = Math.round(pct) / 100;
+
+  if (typeof document !== 'undefined') {
+    const gainSlider = document.getElementById('scrubber-gain-slider');
+    const gainValue = document.getElementById('scrubber-gain-value');
+    if (gainSlider) gainSlider.value = String(pct);
+    if (gainValue) gainValue.textContent = `${pct}%`;
+  }
+
+  const current = audioEngine.currentTrack || (audioEngine.getCurrentTrack ? audioEngine.getCurrentTrack() : null);
+  if (current) {
+    current.customGain = customGain;
+    const match = allTracks.find((t) => t.id === current.id);
+    if (match) match.customGain = customGain;
+    audioEngine.updateCurrentTrackGain();
+    await updateTrackGain(current.id, { customGain }).catch((err) =>
+      console.warn('Failed to save track customGain:', err)
+    );
+  }
+}
+
+let isBackgroundNormalizing = false;
+
+/**
+ * Gently analyzes un-normalized tracks in the background one at a time
+ */
+export async function scheduleBackgroundNormalization() {
+  if (isBackgroundNormalizing) return;
+  isBackgroundNormalizing = true;
+  try {
+    for (const track of allTracks) {
+      if (typeof track.normGain !== 'number' || isNaN(track.normGain)) {
+        const normGain = await audioEngine.analyzeTrackLoudness(track);
+        if (typeof normGain === 'number' && !isNaN(normGain)) {
+          await updateTrackGain(track.id, { normGain }).catch(() => {});
+        }
+        await new Promise((r) => setTimeout(r, 40));
+      }
+    }
+  } catch (_) {
+    // Ignore background analysis interruptions
+  } finally {
+    isBackgroundNormalizing = false;
+  }
 }
 
 /**
@@ -1193,6 +1290,12 @@ export function setupEventListeners() {
     volumeSlider.addEventListener('input', (e) => applyVolume(e.target.value));
   }
 
+  // Auto-Normalization toggle button
+  const btnAutoNorm = document.getElementById('btn-auto-norm');
+  if (btnAutoNorm && typeof btnAutoNorm.addEventListener === 'function') {
+    btnAutoNorm.addEventListener('click', () => toggleAutoNormalize());
+  }
+
   // Header banner toggle button
   const btnToggleHeader = document.getElementById('btn-toggle-header');
   if (btnToggleHeader) {
@@ -1506,6 +1609,20 @@ export function setupEventListeners() {
       syncScrubberUI();
     });
   }
+
+  const scrubberGainSlider = document.getElementById('scrubber-gain-slider');
+  if (scrubberGainSlider && typeof scrubberGainSlider.addEventListener === 'function') {
+    scrubberGainSlider.addEventListener('input', (e) => {
+      applyTrackCustomGain(e.target.value);
+    });
+  }
+
+  const btnResetTrackGain = document.getElementById('btn-reset-track-gain');
+  if (btnResetTrackGain && typeof btnResetTrackGain.addEventListener === 'function') {
+    btnResetTrackGain.addEventListener('click', () => {
+      applyTrackCustomGain(100);
+    });
+  }
 }
 
 /**
@@ -1619,6 +1736,9 @@ export async function initApp() {
     // Load saved settings
     const savedVolume = await getSetting('volume', 100);
     applyVolume(savedVolume);
+
+    const savedAutoNorm = await getSetting('autoNormalize', true);
+    applyAutoNormalize(savedAutoNorm);
 
     const savedZoom = await getSetting('zoom', 100);
     applyZoom(savedZoom);
