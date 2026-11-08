@@ -1196,7 +1196,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.13.0';
+export const APP_VERSION = '1.13.1';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -1258,6 +1258,12 @@ export async function handleCheckUpdate() {
         : true;
 
       if (doReload) {
+        if (typeof caches !== 'undefined' && typeof caches.keys === 'function') {
+          try {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          } catch (_) {}
+        }
         if (registration?.waiting) {
           registration.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
