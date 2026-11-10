@@ -11,6 +11,20 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('sv1845_theme') || 'classic';
+        if (savedTheme === 'm3-expressive') {
+          document.documentElement.setAttribute('data-theme', 'm3-expressive');
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', '#0A0E17');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'classic');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -118,6 +132,9 @@
           </div>
           <button type="button" class="btn-header-tool btn-eq-menu" id="btn-eq-menu" aria-haspopup="dialog" aria-expanded="false" title="Equalizer & Automatische Lautstärke-Angleichung öffnen">
             🎛️ <span id="eq-menu-label">Sound / EQ</span>
+          </button>
+          <button type="button" class="btn-header-tool btn-theme-toggle" id="btn-theme-toggle" aria-label="Theme wechseln (Aktuell: Klassisch)" title="Theme wechseln (Klassisch / Material 3 Expressive)">
+            🎨
           </button>
           <button type="button" class="btn-header-tool btn-reset-counts" id="btn-reset-counts" title="Alle Play-Counts zurücksetzen">
             Reset

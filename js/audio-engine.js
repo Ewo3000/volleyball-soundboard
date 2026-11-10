@@ -173,6 +173,20 @@ export class AudioEngine {
         this.audioCtx = new AudioCtxClass();
         const now = this.audioCtx.currentTime || 0;
 
+        // Auto-recover AudioContext on state change (e.g. Bluetooth reconnect, route switch, screen lock/unlock)
+        const handleStateRecovery = () => {
+          if (this.audioCtx && (this.audioCtx.state === 'suspended' || this.audioCtx.state === 'interrupted')) {
+            const res = typeof this.audioCtx.resume === 'function' ? this.audioCtx.resume() : null;
+            if (res && typeof res.catch === 'function') res.catch(() => {});
+          }
+        };
+
+        if (typeof this.audioCtx.addEventListener === 'function') {
+          this.audioCtx.addEventListener('statechange', handleStateRecovery);
+        } else if ('onstatechange' in this.audioCtx) {
+          this.audioCtx.onstatechange = handleStateRecovery;
+        }
+
         this.masterGain = this.audioCtx.createGain();
         this.masterGain.gain.setValueAtTime(this.volume, now);
         this.masterGain.connect(this.audioCtx.destination);
@@ -211,8 +225,11 @@ export class AudioEngine {
       }
     }
 
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume();
+    if (this.audioCtx && (this.audioCtx.state === 'suspended' || this.audioCtx.state === 'interrupted')) {
+      const res = typeof this.audioCtx.resume === 'function' ? this.audioCtx.resume() : null;
+      if (res && typeof res.catch === 'function') {
+        res.catch(() => {});
+      }
     }
   }
 
@@ -388,6 +405,9 @@ export class AudioEngine {
     }
 
     this.currentTrack = track;
+    let audio = null;
+    let source = null;
+    let trackGain = null;
 
     try {
       let objectUrl;
@@ -415,12 +435,10 @@ export class AudioEngine {
         throw new Error('Audio element is not supported in this environment');
       }
 
-      const audio = new AudioConstructor(objectUrl);
+      audio = new AudioConstructor(objectUrl);
       this.currentAudioElement = audio;
 
       const targetGain = this.getEffectiveTrackGain(track);
-      let source = null;
-      let trackGain = null;
 
       if (this.audioCtx && this.masterGain) {
         source = this.audioCtx.createMediaElementSource(audio);
@@ -469,13 +487,18 @@ export class AudioEngine {
       }
     } catch (err) {
       console.error('Failed to play track:', err);
-      if (this.currentObjectUrl) {
-        if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-          URL.revokeObjectURL(this.currentObjectUrl);
-        }
-        this.currentObjectUrl = null;
-      }
+      const failedUrl = this.currentObjectUrl;
+      this.currentObjectUrl = null;
+      this._cleanupAudioChain({
+        audio,
+        source,
+        trackGain,
+        objectUrl: failedUrl
+      });
       this.currentTrack = null;
+      this.currentAudioElement = null;
+      this.currentSource = null;
+      this.currentTrackGain = null;
       throw err;
     }
   }
@@ -484,13 +507,12 @@ export class AudioEngine {
     const objectUrlToRevoke = this.currentObjectUrl;
     this.currentObjectUrl = null;
 
-    if (objectUrlToRevoke) {
-      if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(objectUrlToRevoke);
-      }
-    }
-
     if (!this.currentAudioElement) {
+      if (objectUrlToRevoke) {
+        if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+          URL.revokeObjectURL(objectUrlToRevoke);
+        }
+      }
       this.currentTrack = null;
       if (this.onTrackStop) this.onTrackStop();
       return;
@@ -519,7 +541,7 @@ export class AudioEngine {
         try {
           audio.currentTime = 0;
         } catch (_) {}
-        this._cleanupAudioChain({ audio, source, trackGain });
+        this._cleanupAudioChain({ audio, source, trackGain, objectUrl: objectUrlToRevoke });
       }, fadeDurationMs);
     } else {
       if (typeof audio.pause === 'function') {
@@ -528,7 +550,7 @@ export class AudioEngine {
       try {
         audio.currentTime = 0;
       } catch (_) {}
-      this._cleanupAudioChain({ audio, source, trackGain });
+      this._cleanupAudioChain({ audio, source, trackGain, objectUrl: objectUrlToRevoke });
     }
 
     this.currentTrack = null;

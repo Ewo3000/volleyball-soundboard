@@ -33,6 +33,15 @@ import {
 
 import { WakeLockManager } from './wake-lock.js';
 import { createDemoSoundpack } from './demo-sounds.js';
+import {
+  initTheme,
+  toggleTheme,
+  setTheme,
+  getCurrentTheme,
+  THEMES
+} from './theme.js';
+
+export { initTheme, toggleTheme, setTheme, getCurrentTheme, THEMES };
 
 // Application State
 export const audioEngine = new AudioEngine();
@@ -1196,7 +1205,7 @@ export async function handleClearAll() {
   renderAll();
 }
 
-export const APP_VERSION = '1.13.1';
+export const APP_VERSION = '1.14.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -1397,19 +1406,41 @@ export function setupEventListeners() {
     closeScrubberModal();
   };
 
-  // One-time user gesture listener to acquire wake lock on first interaction
+  // One-time user gesture listener to acquire wake lock and unlock AudioContext on first interaction
   if (typeof document !== 'undefined') {
-    document.addEventListener('pointerdown', () => {
+    const unlockUserGesture = () => {
+      audioEngine.initAudioContext();
+      if (audioEngine.audioCtx && (audioEngine.audioCtx.state === 'suspended' || audioEngine.audioCtx.state === 'interrupted')) {
+        const res = typeof audioEngine.audioCtx.resume === 'function' ? audioEngine.audioCtx.resume() : null;
+        if (res && typeof res.catch === 'function') res.catch(() => {});
+      }
       if (!wakeLock.isActive()) {
         wakeLock.requestLock().catch(() => {});
       }
-    }, { once: true });
+    };
+
+    if (typeof document.addEventListener === 'function') {
+      document.addEventListener('pointerdown', unlockUserGesture, { once: true });
+      document.addEventListener('touchstart', unlockUserGesture, { once: true });
+    }
 
     const appEl = document.getElementById('app') || document.body;
     if (appEl && appEl.addEventListener) {
       appEl.addEventListener('pointerdown', () => {
         requestAutoFullscreen();
       }, { once: true });
+    }
+
+    // Auto-resume AudioContext on returning from background or screen lock
+    if (typeof document.addEventListener === 'function') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && audioEngine.audioCtx) {
+          if (audioEngine.audioCtx.state === 'suspended' || audioEngine.audioCtx.state === 'interrupted') {
+            const res = typeof audioEngine.audioCtx.resume === 'function' ? audioEngine.audioCtx.resume() : null;
+            if (res && typeof res.catch === 'function') res.catch(() => {});
+          }
+        }
+      });
     }
   }
 
@@ -1495,6 +1526,14 @@ export function setupEventListeners() {
     btnToggleHeader.addEventListener('click', () => setHeaderCollapsed(!isHeaderCollapsed));
   }
 
+  // Theme toggle button
+  const btnThemeToggle = document.getElementById('btn-theme-toggle');
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', () => {
+      toggleTheme();
+    });
+  }
+
   // Reset play counts button
   const btnResetCounts = document.getElementById('btn-reset-counts');
   if (btnResetCounts) {
@@ -1571,145 +1610,165 @@ export function setupEventListeners() {
     }
   });
 
-  // Track button click delegation on main soundboard
-  const boardContainer = document.getElementById('board-container');
-  if (boardContainer) {
-    boardContainer.addEventListener('click', (e) => {
-      const btn = e.target.closest('.song-btn, .track-btn');
-      if (btn) {
-        const trackId = btn.getAttribute('data-track-id');
-        const track = allTracks.find((t) => t.id === trackId);
-        if (track) {
-          setActiveTriggerButton(btn);
-          handlePlayTrack(track);
-        }
+  // Fast Touch / Click helper for ultra-low latency triggering with ghost-click suppression
+  const bindFastTrigger = (btn, action) => {
+    if (!btn || typeof btn.addEventListener !== 'function') return;
+    let lastTrigger = 0;
+    const trigger = (e) => {
+      const now = Date.now();
+      if (now - lastTrigger < 300) {
+        if (typeof e?.preventDefault === 'function') e.preventDefault();
+        return;
       }
-    });
-  }
+      lastTrigger = now;
+      if (e?.type === 'pointerdown' && typeof e?.preventDefault === 'function') {
+        e.preventDefault();
+      }
+      action(e);
+    };
+    btn.addEventListener('pointerdown', trigger);
+    btn.addEventListener('click', trigger);
+  };
 
-  // Track button click delegation on modal drawer
-  const drawerContent = document.getElementById('drawer-content');
-  if (drawerContent) {
-    drawerContent.addEventListener('click', (e) => {
-      const btn = e.target.closest('.song-btn, .track-btn');
-      if (btn) {
-        const trackId = btn.getAttribute('data-track-id');
-        const track = allTracks.find((t) => t.id === trackId);
-        if (track) {
-          setActiveTriggerButton(btn);
-          handlePlayTrack(track);
-        }
+  const setupContainerFastTrigger = (container) => {
+    if (!container || typeof container.addEventListener !== 'function') return;
+    let lastTrigger = 0;
+    const handler = (e) => {
+      const btn = e?.target?.closest?.('.song-btn, .track-btn');
+      if (!btn) return;
+      const now = Date.now();
+      if (now - lastTrigger < 300) {
+        if (typeof e?.preventDefault === 'function') e.preventDefault();
+        return;
       }
-    });
-  }
+      lastTrigger = now;
+      if (e?.type === 'pointerdown' && typeof e?.preventDefault === 'function') {
+        e.preventDefault();
+      }
+      const trackId = btn.getAttribute('data-track-id');
+      const track = allTracks.find((t) => t.id === trackId);
+      if (track) {
+        setActiveTriggerButton(btn);
+        handlePlayTrack(track);
+      }
+    };
+    container.addEventListener('pointerdown', handler);
+    container.addEventListener('click', handler);
+  };
+
+  // Track button trigger delegation on main soundboard
+  const boardContainer = document.getElementById('board-container');
+  setupContainerFastTrigger(boardContainer);
+
+  // Track button trigger delegation on modal drawer
+  const drawerContent = document.getElementById('drawer-content');
+  setupContainerFastTrigger(drawerContent);
 
   // Desktop Footer Bar Quick Actions
   const btnTimeout = document.getElementById('btn-timeout');
-  if (btnTimeout) btnTimeout.addEventListener('click', () => {
+  bindFastTrigger(btnTimeout, () => {
     setActiveTriggerButton(btnTimeout);
     playTimeout(btnTimeout);
   });
 
   const btnWalkon = document.getElementById('btn-walkon');
-  if (btnWalkon) btnWalkon.addEventListener('click', () => {
+  bindFastTrigger(btnWalkon, () => {
     setActiveTriggerButton(btnWalkon);
     playWalkOn(btnWalkon);
   });
 
   for (let slot = 1; slot <= 4; slot++) {
     const slotBtn = document.getElementById(`btn-pause-${slot}`);
-    if (slotBtn) {
-      slotBtn.addEventListener('click', () => {
-        setActiveTriggerButton(slotBtn);
-        playPauseSlot(slot, slotBtn);
-      });
-    }
+    bindFastTrigger(slotBtn, () => {
+      setActiveTriggerButton(slotBtn);
+      playPauseSlot(slot, slotBtn);
+    });
   }
 
   const btnSixseven = document.getElementById('btn-sixseven');
-  if (btnSixseven) btnSixseven.addEventListener('click', () => {
+  bindFastTrigger(btnSixseven, () => {
     setActiveTriggerButton(btnSixseven);
     playSixSeven(btnSixseven);
   });
 
   const btnAce = document.getElementById('btn-ace');
-  if (btnAce) btnAce.addEventListener('click', () => {
+  bindFastTrigger(btnAce, () => {
     setActiveTriggerButton(btnAce);
     playAce(btnAce);
   });
 
   const btnBlock = document.getElementById('btn-block');
-  if (btnBlock) btnBlock.addEventListener('click', () => {
+  bindFastTrigger(btnBlock, () => {
     setActiveTriggerButton(btnBlock);
     playBlock(btnBlock);
   });
 
   const btnRandomOwn = document.getElementById('btn-random-own');
-  if (btnRandomOwn) btnRandomOwn.addEventListener('click', () => {
+  bindFastTrigger(btnRandomOwn, () => {
     setActiveTriggerButton(btnRandomOwn);
     playRandomOwn(btnRandomOwn);
   });
 
   const btnRandomOpponent = document.getElementById('btn-random-opponent');
-  if (btnRandomOpponent) btnRandomOpponent.addEventListener('click', () => {
+  bindFastTrigger(btnRandomOpponent, () => {
     setActiveTriggerButton(btnRandomOpponent);
     playRandomOpponent(btnRandomOpponent);
   });
 
   const btnStop = document.getElementById('btn-stop');
-  if (btnStop) btnStop.addEventListener('click', stopAudio);
+  bindFastTrigger(btnStop, stopAudio);
 
   // Mobile Pad Quick Actions
   const btnMobileTimeout = document.getElementById('btn-mobile-timeout');
-  if (btnMobileTimeout) btnMobileTimeout.addEventListener('click', () => {
+  bindFastTrigger(btnMobileTimeout, () => {
     setActiveTriggerButton(btnMobileTimeout);
     playTimeout(btnMobileTimeout);
   });
 
   const btnMobileWalkon = document.getElementById('btn-mobile-walkon');
-  if (btnMobileWalkon) btnMobileWalkon.addEventListener('click', () => {
+  bindFastTrigger(btnMobileWalkon, () => {
     setActiveTriggerButton(btnMobileWalkon);
     playWalkOn(btnMobileWalkon);
   });
 
   const btnMobilePause = document.getElementById('btn-mobile-pause');
-  if (btnMobilePause) btnMobilePause.addEventListener('click', () => {
+  bindFastTrigger(btnMobilePause, () => {
     setActiveTriggerButton(btnMobilePause);
     playPauseSlot(1, btnMobilePause);
   });
 
   const btnMobileSixseven = document.getElementById('btn-mobile-sixseven');
-  if (btnMobileSixseven) btnMobileSixseven.addEventListener('click', () => {
+  bindFastTrigger(btnMobileSixseven, () => {
     setActiveTriggerButton(btnMobileSixseven);
     playSixSeven(btnMobileSixseven);
   });
 
   const btnMobileAce = document.getElementById('btn-mobile-ace');
-  if (btnMobileAce) btnMobileAce.addEventListener('click', () => {
+  bindFastTrigger(btnMobileAce, () => {
     setActiveTriggerButton(btnMobileAce);
     playAce(btnMobileAce);
   });
 
   const btnMobileBlock = document.getElementById('btn-mobile-block');
-  if (btnMobileBlock) btnMobileBlock.addEventListener('click', () => {
+  bindFastTrigger(btnMobileBlock, () => {
     setActiveTriggerButton(btnMobileBlock);
     playBlock(btnMobileBlock);
   });
 
   const btnMobileRandomOwn = document.getElementById('btn-mobile-random-own');
-  if (btnMobileRandomOwn) btnMobileRandomOwn.addEventListener('click', () => {
+  bindFastTrigger(btnMobileRandomOwn, () => {
     setActiveTriggerButton(btnMobileRandomOwn);
     playRandomOwn(btnMobileRandomOwn);
   });
 
   const btnMobileRandomOpponent = document.getElementById('btn-mobile-random-opponent');
-  if (btnMobileRandomOpponent) btnMobileRandomOpponent.addEventListener('click', () => {
+  bindFastTrigger(btnMobileRandomOpponent, () => {
     setActiveTriggerButton(btnMobileRandomOpponent);
     playRandomOpponent(btnMobileRandomOpponent);
   });
 
   const btnMobileStop = document.getElementById('btn-mobile-stop');
-  if (btnMobileStop) btnMobileStop.addEventListener('click', stopAudio);
+  bindFastTrigger(btnMobileStop, stopAudio);
 
   // Mobile Drawer Toggle
   const drawer = document.getElementById('all-songs-drawer');
@@ -1942,6 +2001,9 @@ export async function initApp() {
 
     const savedHeaderCollapsed = await getSetting('headerCollapsed', false);
     setHeaderCollapsed(savedHeaderCollapsed);
+
+    // Initialize Theme (classic by default or loaded from localStorage)
+    initTheme();
 
     // Setup events and render initial state
     setupEventListeners();

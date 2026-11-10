@@ -1,10 +1,10 @@
 /**
  * SV 1845 Esslingen - Volleyball DJ Soundboard
  * Service Worker (sw.js) for 100% Offline PWA Capability
- * Version: 1.13.1
+ * Version: 1.14.0
  */
 
-const CACHE_NAME = 'sv1845-dj-v1.13.1';
+const CACHE_NAME = 'sv1845-dj-v1.14.0';
 
 const APP_SHELL_ASSETS = [
   './',
@@ -13,6 +13,7 @@ const APP_SHELL_ASSETS = [
   'version.json',
   'css/app.css',
   'js/app.js',
+  'js/theme.js',
   'js/db.js',
   'js/file-loader.js',
   'js/audio-engine.js',

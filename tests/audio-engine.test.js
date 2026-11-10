@@ -102,6 +102,10 @@ test('AudioEngine plays track with Web Audio API mock and handles lifecycle', as
       this.currentTime = 0;
       this.state = 'suspended';
       this.destination = {};
+      this.listeners = {};
+    }
+    addEventListener(event, fn) {
+      this.listeners[event] = fn;
     }
     resume() {
       this.state = 'running';
@@ -203,6 +207,8 @@ test('AudioEngine plays track with Web Audio API mock and handles lifecycle', as
 
     const blobTrack2 = { id: 'b2', cleanTitle: 'Blob 2', blob: new Uint8Array([4, 5, 6]) };
     await engine.playTrack(blobTrack2);
+    // Object URL revocation of track 1 occurs after the 50ms micro-fade completes
+    await new Promise((r) => setTimeout(r, 70));
     assert.ok(revokedUrls.includes(blob1Url), 'blob 1 URL should be revoked when swapping');
 
     const blob2Url = engine.currentObjectUrl;
@@ -271,5 +277,133 @@ test('AudioEngine playTrack handles Uint8Array/ArrayBuffer and errors on invalid
   } finally {
     globalThis.Audio = originalAudio;
     globalThis.URL.createObjectURL = origCreateObjectURL;
+  }
+});
+
+test('AudioEngine recovers from interrupted state on init and via statechange listener', () => {
+  const originalAudioContext = globalThis.AudioContext;
+
+  let resumed = 0;
+  class InterruptedMockAudioContext {
+    constructor() {
+      this.state = 'interrupted';
+      this.listeners = {};
+    }
+    addEventListener(event, fn) {
+      this.listeners[event] = fn;
+    }
+    resume() {
+      resumed++;
+      this.state = 'running';
+      return Promise.resolve();
+    }
+    createGain() {
+      return { gain: { setValueAtTime() {} }, connect() {} };
+    }
+    createDynamicsCompressor() {
+      return {
+        threshold: { setValueAtTime() {} },
+        knee: { setValueAtTime() {} },
+        ratio: { setValueAtTime() {} },
+        attack: { setValueAtTime() {} },
+        release: { setValueAtTime() {} },
+        connect() {}
+      };
+    }
+    createBiquadFilter() {
+      return {
+        type: 'peaking',
+        frequency: { setValueAtTime() {} },
+        Q: { setValueAtTime() {} },
+        gain: { setValueAtTime() {} },
+        connect() {}
+      };
+    }
+  }
+
+  globalThis.AudioContext = InterruptedMockAudioContext;
+
+  try {
+    const engine = new AudioEngine();
+    engine.initAudioContext();
+    assert.equal(resumed, 1, 'initAudioContext must resume AudioContext when state is interrupted');
+    assert.equal(engine.audioCtx.state, 'running');
+
+    // Simulate Bluetooth reconnection / iOS screen lock interruption triggering statechange
+    engine.audioCtx.state = 'interrupted';
+    assert.ok(typeof engine.audioCtx.listeners['statechange'] === 'function', 'statechange listener must be registered');
+    engine.audioCtx.listeners['statechange']();
+    assert.equal(resumed, 2, 'statechange listener must automatically resume AudioContext');
+  } finally {
+    globalThis.AudioContext = originalAudioContext;
+  }
+});
+
+test('AudioEngine defers object URL revocation in stop() until fade completes', async () => {
+  const originalAudio = globalThis.Audio;
+  const originalAudioContext = globalThis.AudioContext;
+  const originalURL = globalThis.URL;
+
+  const revoked = [];
+  globalThis.URL = {
+    createObjectURL: (blob) => 'blob:test-fade-url',
+    revokeObjectURL: (url) => { revoked.push(url); }
+  };
+
+  class MockFadeAudio {
+    constructor(src) {
+      this.src = src;
+      this.volume = 1;
+      this.currentTime = 0;
+      this.onended = null;
+    }
+    play() { return Promise.resolve(); }
+    pause() {}
+    removeAttribute() {}
+    load() {}
+  }
+  globalThis.Audio = MockFadeAudio;
+
+  class MockFadeAudioContext {
+    constructor() {
+      this.currentTime = 0;
+      this.state = 'running';
+      this.destination = {};
+    }
+    resume() { return Promise.resolve(); }
+    createGain() {
+      return {
+        gain: {
+          value: 1,
+          setValueAtTime() {},
+          exponentialRampToValueAtTime() {}
+        },
+        connect() {},
+        disconnect() {}
+      };
+    }
+    createMediaElementSource() {
+      return { connect() {}, disconnect() {} };
+    }
+  }
+  globalThis.AudioContext = MockFadeAudioContext;
+
+  try {
+    const engine = new AudioEngine();
+    await engine.playTrack({ id: 'blob-fade', blob: new Uint8Array([1, 2, 3]) });
+    assert.equal(engine.currentObjectUrl, 'blob:test-fade-url');
+
+    // Initiate stop with 40ms fade
+    engine.stop(40);
+    // Immediately after stop() call, URL should NOT yet be revoked because fade is active
+    assert.equal(revoked.length, 0, 'Object URL must not be revoked synchronously during active fade-out');
+
+    // Wait for the fade to finish
+    await new Promise((r) => setTimeout(r, 60));
+    assert.ok(revoked.includes('blob:test-fade-url'), 'Object URL must be revoked after fade completes');
+  } finally {
+    globalThis.Audio = originalAudio;
+    globalThis.AudioContext = originalAudioContext;
+    globalThis.URL = originalURL;
   }
 });

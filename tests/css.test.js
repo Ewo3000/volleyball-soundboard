@@ -61,3 +61,17 @@ test('css/app.css styles quick action bar responsively with dynamic font scaling
   // Must style .btn-block in quick action bar
   assert.ok(content.includes('.btn-block'), 'must define .btn-block styling');
 });
+
+test('css/app.css implements tablet zero-scroll, 100dvh, and safe-area insets', () => {
+  const content = fs.readFileSync(CSS_PATH, 'utf8');
+
+  // Dynamic viewport units and overscroll lock
+  assert.ok(content.includes('100dvh'), 'must use 100dvh for viewport containers');
+  assert.ok(content.includes('overscroll-behavior: none'), 'must lock overscroll bouncing on root');
+
+  // Safe area insets for notches, status bar, and home indicators
+  assert.ok(content.includes('safe-area-inset-top'), 'must protect top edge with safe-area-inset-top');
+  assert.ok(content.includes('safe-area-inset-bottom'), 'must protect bottom edge with safe-area-inset-bottom');
+  assert.ok(content.includes('safe-area-inset-left'), 'must protect left edge with safe-area-inset-left');
+  assert.ok(content.includes('safe-area-inset-right'), 'must protect right edge with safe-area-inset-right');
+});

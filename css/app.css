@@ -64,6 +64,26 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-neon-blue: 0 0 15px rgba(27, 117, 188, 0.7), 0 0 30px rgba(27, 117, 188, 0.4);
+
+  /* Semantic Theme Tokens (Classic Defaults) */
+  --radius-track: var(--radius-sm);
+  --radius-action-btn: var(--radius-md);
+  --radius-container: var(--radius-md);
+  --radius-pill: var(--radius-full);
+  --radius-dialog: var(--radius-lg);
+
+  /* Motion & Elastic Spring Tokens (Classic) */
+  --ease-spring: cubic-bezier(0.4, 0, 0.2, 1);
+  --spring-duration: 0.15s;
+  --tap-scale: translateY(1px);
+  --tap-scale-large: translateY(1px);
+
+  /* Tonal Surface System (Classic defaults) */
+  --surface-container-lowest: #070A10;
+  --surface-container-low: #0E1420;
+  --surface-container: #121824;
+  --surface-container-high: #1E293B;
+  --surface-container-highest: #334155;
 }
 
 /* ==========================================================================
@@ -79,7 +99,9 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
   background-color: var(--bg-primary);
   color: var(--text-white);
   font-family: var(--font-sans);
@@ -143,9 +165,13 @@ button {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
+  overscroll-behavior: none;
   background-color: var(--bg-primary);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* ==========================================================================
@@ -162,6 +188,7 @@ header.header,
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-md);
   flex-shrink: 0;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Collapsible Banner Area */
@@ -686,7 +713,7 @@ header.header,
 }
 
 .column-title {
-  font-size: 0.82rem;
+  font-size: clamp(0.70rem, 0.85vw, 0.82rem);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -795,8 +822,8 @@ header.header,
 .track-btn {
   position: relative;
   width: 100%;
-  min-height: 44px;
-  padding: 7px 8px 7px 10px;
+  min-height: clamp(38px, 4.8dvh, 44px);
+  padding: clamp(4px, 0.6dvh, 7px) clamp(5px, 0.6vw, 10px);
   background: var(--bg-surface);
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-sm);
@@ -825,7 +852,7 @@ header.header,
 
 .song-title,
 .track-title {
-  font-size: 0.84rem;
+  font-size: clamp(0.72rem, 0.85vw, 0.84rem);
   font-weight: 600;
   line-height: 1.25;
   color: var(--text-white);
@@ -945,14 +972,15 @@ footer.quick-actions {
   background: rgba(11, 15, 23, 0.98);
   border-top: 1px solid var(--border-glass);
   backdrop-filter: blur(16px);
-  padding: 8px clamp(4px, 1vw, 12px);
+  padding: 8px clamp(4px, 1vw, 12px) calc(8px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: clamp(4px, 0.6vw, 10px);
   z-index: 500;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.7);
-  min-height: clamp(130px, 17vh, 160px); /* 50% larger upwards */
+  min-height: clamp(130px, 17dvh, 160px);
+  min-height: calc(clamp(130px, 17dvh, 160px) + env(safe-area-inset-bottom, 0px));
 }
 
 /* Quick Action Grouping */
@@ -972,7 +1000,7 @@ footer.quick-actions {
 }
 
 .quick-btn {
-  height: clamp(108px, 14vh, 140px); /* 50% larger */
+  height: clamp(108px, 14dvh, 140px);
   padding: 4px clamp(3px, 0.6vw, 10px);
   border-radius: var(--radius-md);
   font-weight: 700;
@@ -997,7 +1025,7 @@ footer.quick-actions {
 
 /* Stacked buttons (Timeout + Walk-On): +3 steps font-size */
 .stacked-btn {
-  height: clamp(50px, 6.5vh, 66px);
+  height: clamp(50px, 6.5dvh, 66px);
   flex: 1 1 auto;
   width: 100%;
   min-width: clamp(120px, 14vw, 200px);
@@ -1126,7 +1154,7 @@ footer.quick-actions {
   align-self: stretch;
 }
 .pause-slot-btn {
-  height: clamp(50px, 6.5vh, 66px);
+  height: clamp(50px, 6.5dvh, 66px);
   min-width: clamp(88px, 10vw, 144px);
   padding: 2px clamp(4px, 0.5vw, 10px);
   font-size: clamp(0.95rem, 1.30vw, 1.30rem); /* +4 steps */
@@ -1290,7 +1318,7 @@ footer.quick-actions {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 12px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
     flex: 1;
     overflow-y: auto;
     background-color: var(--bg-primary);
@@ -2666,4 +2694,192 @@ footer.quick-actions {
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   Theming Engine: Classic & Material 3 Expressive System
+   ========================================================================== */
+
+/* Compact UI Theme Switcher in Header */
+.btn-theme-toggle {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 7px 10px;
+  min-width: 36px;
+  justify-content: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.btn-theme-toggle:hover {
+  border-color: var(--club-blue);
+  color: var(--club-blue-hover);
+}
+
+/* Material 3 Expressive System Overrides */
+[data-theme="m3-expressive"] {
+  /* Tonal Surface Colors (Material 3 Expressive Dark with SV Club Blue tinting) */
+  --bg-primary: #0A0E17;
+  --bg-secondary: #0F1726;
+  --bg-surface: #152033;
+  --bg-surface-hover: #1D2D47;
+  --bg-surface-active: #273A5C;
+  --border-subtle: #202F49;
+  --border-glass: rgba(255, 255, 255, 0.12);
+
+  /* Material 3 Expressive Tonal Surfaces */
+  --surface-container-lowest: #06090F;
+  --surface-container-low: #0B111D;
+  --surface-container: #152033;
+  --surface-container-high: #1E2E4A;
+  --surface-container-highest: #283C61;
+
+  /* Dynamic Pill & Squircle Radii */
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --radius-track: 18px;
+  --radius-action-btn: 26px;
+  --radius-container: 22px;
+  --radius-pill: 9999px;
+  --radius-dialog: 28px;
+
+  /* Material 3 Expressive Spring Motion (cubic-bezier(0.34, 1.56, 0.64, 1)) */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-duration: 0.28s;
+  --tap-scale: scale(0.92);
+  --tap-scale-large: scale(0.95);
+
+  /* Expressive Elevations */
+  --shadow-sm: 0 3px 6px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+/* M3 Expressive Pill & Squircle Layout Styling */
+[data-theme="m3-expressive"] .soundboard-column {
+  border-radius: var(--radius-container);
+  background: var(--surface-container-low);
+  border: 1px solid var(--border-subtle);
+}
+
+[data-theme="m3-expressive"] .column-header {
+  border-radius: calc(var(--radius-container) - 2px) calc(var(--radius-container) - 2px) 0 0;
+}
+
+[data-theme="m3-expressive"] .song-btn,
+[data-theme="m3-expressive"] .track-btn {
+  border-radius: var(--radius-track);
+  background: var(--surface-container);
+  border: 1px solid var(--border-glass);
+}
+
+[data-theme="m3-expressive"] .song-btn:hover,
+[data-theme="m3-expressive"] .track-btn:hover {
+  background-color: var(--surface-container-high);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="m3-expressive"] .quick-btn,
+[data-theme="m3-expressive"] .pause-slot-btn,
+[data-theme="m3-expressive"] .mobile-quick-btn {
+  border-radius: var(--radius-action-btn);
+}
+
+[data-theme="m3-expressive"] .btn-header-tool,
+[data-theme="m3-expressive"] .btn-load-demo,
+[data-theme="m3-expressive"] .btn-load-folder,
+[data-theme="m3-expressive"] .btn-toggle-header {
+  border-radius: var(--radius-pill);
+}
+
+[data-theme="m3-expressive"] .search-wrapper {
+  border-radius: var(--radius-pill);
+  background: var(--surface-container);
+  border: 1px solid var(--border-glass);
+}
+
+[data-theme="m3-expressive"] .volume-group,
+[data-theme="m3-expressive"] .zoom-controls {
+  border-radius: var(--radius-pill);
+  background: var(--surface-container);
+}
+
+[data-theme="m3-expressive"] .play-badge,
+[data-theme="m3-expressive"] .col-count,
+[data-theme="m3-expressive"] .file-status-badge,
+[data-theme="m3-expressive"] .search-counter-badge {
+  border-radius: var(--radius-pill);
+}
+
+[data-theme="m3-expressive"] .scrubber-card,
+[data-theme="m3-expressive"] .eq-card {
+  border-radius: var(--radius-dialog);
+  background: var(--surface-container);
+  border: 1px solid var(--border-glass);
+}
+
+[data-theme="m3-expressive"] .eq-preset-btn {
+  border-radius: var(--radius-md);
+}
+
+[data-theme="m3-expressive"] .btn-auto-norm {
+  border-radius: var(--radius-pill);
+}
+
+/* Hardware-Accelerated Elastic Spring Tap Transitions (Strictly transform & background-color) */
+[data-theme="m3-expressive"] .song-btn,
+[data-theme="m3-expressive"] .track-btn,
+[data-theme="m3-expressive"] .quick-btn,
+[data-theme="m3-expressive"] .pause-slot-btn,
+[data-theme="m3-expressive"] .mobile-quick-btn,
+[data-theme="m3-expressive"] .btn-header-tool,
+[data-theme="m3-expressive"] .btn-load-demo,
+[data-theme="m3-expressive"] .btn-load-folder,
+[data-theme="m3-expressive"] .btn-toggle-header,
+[data-theme="m3-expressive"] .btn-zoom,
+[data-theme="m3-expressive"] .eq-preset-btn,
+[data-theme="m3-expressive"] .btn-auto-norm {
+  transition-property: transform, background-color;
+  transition-duration: var(--spring-duration);
+  transition-timing-function: var(--ease-spring);
+  will-change: transform;
+}
+
+[data-theme="m3-expressive"] .song-btn:active,
+[data-theme="m3-expressive"] .track-btn:active,
+[data-theme="m3-expressive"] .btn-header-tool:active,
+[data-theme="m3-expressive"] .btn-load-demo:active,
+[data-theme="m3-expressive"] .btn-load-folder:active,
+[data-theme="m3-expressive"] .btn-toggle-header:active,
+[data-theme="m3-expressive"] .btn-zoom:active,
+[data-theme="m3-expressive"] .eq-preset-btn:active,
+[data-theme="m3-expressive"] .btn-auto-norm:active {
+  transform: var(--tap-scale);
+}
+
+[data-theme="m3-expressive"] .quick-btn:active,
+[data-theme="m3-expressive"] .pause-slot-btn:active,
+[data-theme="m3-expressive"] .mobile-quick-btn:active {
+  transform: var(--tap-scale-large);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="m3-expressive"] .song-btn,
+  [data-theme="m3-expressive"] .track-btn,
+  [data-theme="m3-expressive"] .quick-btn,
+  [data-theme="m3-expressive"] .pause-slot-btn,
+  [data-theme="m3-expressive"] .mobile-quick-btn,
+  [data-theme="m3-expressive"] .btn-header-tool,
+  [data-theme="m3-expressive"] .btn-load-demo,
+  [data-theme="m3-expressive"] .btn-load-folder,
+  [data-theme="m3-expressive"] .btn-toggle-header,
+  [data-theme="m3-expressive"] .btn-zoom,
+  [data-theme="m3-expressive"] .eq-preset-btn,
+  [data-theme="m3-expressive"] .btn-auto-norm {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
 
