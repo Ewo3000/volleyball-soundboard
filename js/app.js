@@ -1630,39 +1630,29 @@ export function setupEventListeners() {
     btn.addEventListener('click', trigger);
   };
 
-  const setupContainerFastTrigger = (container) => {
+  // Track button click delegation for scrollable song lists (board and drawer)
+  // Uses native click without e.preventDefault() so touch scrolling/gestures are not blocked on mobile
+  const setupSongListDelegation = (container) => {
     if (!container || typeof container.addEventListener !== 'function') return;
-    let lastTrigger = 0;
-    const handler = (e) => {
+    container.addEventListener('click', (e) => {
       const btn = e?.target?.closest?.('.song-btn, .track-btn');
       if (!btn) return;
-      const now = Date.now();
-      if (now - lastTrigger < 300) {
-        if (typeof e?.preventDefault === 'function') e.preventDefault();
-        return;
-      }
-      lastTrigger = now;
-      if (e?.type === 'pointerdown' && typeof e?.preventDefault === 'function') {
-        e.preventDefault();
-      }
       const trackId = btn.getAttribute('data-track-id');
       const track = allTracks.find((t) => t.id === trackId);
       if (track) {
         setActiveTriggerButton(btn);
         handlePlayTrack(track);
       }
-    };
-    container.addEventListener('pointerdown', handler);
-    container.addEventListener('click', handler);
+    });
   };
 
-  // Track button trigger delegation on main soundboard
+  // Track button trigger delegation on main soundboard (click only to preserve native touch scrolling)
   const boardContainer = document.getElementById('board-container');
-  setupContainerFastTrigger(boardContainer);
+  setupSongListDelegation(boardContainer);
 
-  // Track button trigger delegation on modal drawer
+  // Track button trigger delegation on modal drawer (click only to preserve native touch scrolling)
   const drawerContent = document.getElementById('drawer-content');
-  setupContainerFastTrigger(drawerContent);
+  setupSongListDelegation(drawerContent);
 
   // Desktop Footer Bar Quick Actions
   const btnTimeout = document.getElementById('btn-timeout');

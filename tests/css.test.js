@@ -75,3 +75,9 @@ test('css/app.css implements tablet zero-scroll, 100dvh, and safe-area insets', 
   assert.ok(content.includes('safe-area-inset-left'), 'must protect left edge with safe-area-inset-left');
   assert.ok(content.includes('safe-area-inset-right'), 'must protect right edge with safe-area-inset-right');
 });
+
+test('css/app.css ensures .song-btn and .track-btn have touch-action: manipulation', () => {
+  const content = fs.readFileSync(CSS_PATH, 'utf8');
+  assert.match(content, /\.song-btn,\s*\.track-btn\s*\{[^}]*touch-action:\s*manipulation;/, 'song/track buttons must declare touch-action: manipulation');
+});
+

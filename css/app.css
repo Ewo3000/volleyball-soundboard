@@ -820,6 +820,7 @@ header.header,
 
 .song-btn,
 .track-btn {
+  touch-action: manipulation;
   position: relative;
   width: 100%;
   min-height: clamp(38px, 4.8dvh, 44px);

@@ -227,3 +227,67 @@ test('handleCheckUpdate detects update when remote version.json differs', async 
   }
 });
 
+test('boardContainer and drawerContent use click delegation without pointerdown or preventDefault for smooth native touch scrolling', async () => {
+  const app = await import('../js/app.js');
+  const originalDoc = globalThis.document;
+  const originalWindow = globalThis.window;
+
+  const listeners = {
+    'board-container': [],
+    'drawer-content': [],
+    'btn-timeout': []
+  };
+
+  const createMockElement = (id) => ({
+    id,
+    addEventListener(event, fn, options) {
+      if (listeners[id]) {
+        listeners[id].push({ event, fn, options });
+      }
+    },
+    getAttribute: () => null,
+    classList: { add() {}, remove() {}, contains: () => false }
+  });
+
+  try {
+    globalThis.window = {
+      addEventListener() {}
+    };
+
+    globalThis.document = {
+      fullscreenElement: null,
+      documentElement: { requestFullscreen: async () => {} },
+      getElementById(id) {
+        if (listeners[id]) return createMockElement(id);
+        return {
+          addEventListener() {},
+          getAttribute: () => null,
+          classList: { add() {}, remove() {}, contains: () => false }
+        };
+      },
+      querySelectorAll: () => [],
+      addEventListener() {}
+    };
+
+    app.setupEventListeners();
+
+    // board-container must register 'click' and must NOT register 'pointerdown'
+    const boardEvents = listeners['board-container'].map((l) => l.event);
+    assert.ok(boardEvents.includes('click'), 'board-container must listen to click event');
+    assert.ok(!boardEvents.includes('pointerdown'), 'board-container must NOT listen to pointerdown');
+
+    // drawer-content must register 'click' and must NOT register 'pointerdown'
+    const drawerEvents = listeners['drawer-content'].map((l) => l.event);
+    assert.ok(drawerEvents.includes('click'), 'drawer-content must listen to click event');
+    assert.ok(!drawerEvents.includes('pointerdown'), 'drawer-content must NOT listen to pointerdown');
+
+    // quick actions like btn-timeout must still register 'pointerdown' for 0ms latency
+    const timeoutEvents = listeners['btn-timeout'].map((l) => l.event);
+    assert.ok(timeoutEvents.includes('pointerdown'), 'btn-timeout must retain pointerdown for zero-latency quick trigger');
+  } finally {
+    globalThis.document = originalDoc;
+    globalThis.window = originalWindow;
+  }
+});
+
+
