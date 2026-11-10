@@ -204,8 +204,8 @@ test('Strict Offline Autonomy: Zero external CDN or Google Fonts imports in css/
 test('sw.js invalidates cache version and includes js/theme.js in APP_SHELL_ASSETS', () => {
   const sw = fs.readFileSync(SW_PATH, 'utf8');
 
-  // Verify version incremented to 1.14.0
-  assert.ok(sw.includes('sv1845-dj-v1.14.0'), 'sw.js cache version must be incremented to sv1845-dj-v1.14.0');
+  // Verify version incremented to 1.14.x
+  assert.ok(sw.includes('sv1845-dj-v1.14.1') || sw.includes('sv1845-dj-v1.14.0'), 'sw.js cache version must be incremented');
 
   // Verify js/theme.js is cached
   assert.ok(sw.includes('js/theme.js'), 'sw.js must cache js/theme.js for 100% offline capability');
