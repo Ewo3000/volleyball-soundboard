@@ -1,9 +1,12 @@
 /**
  * Web Audio Engine for SV 1845 Esslingen DJ Pult
  * Handles Bluetooth latency optimization, 50ms track change micro-fade,
- * 3000ms smooth exponential stop fade, transparent loudness normalization,
- * 5-preset 3-band Equalizer, and strict Web Audio node lifecycle cleanup.
+ * 3000ms smooth exponential stop fade, hard-cut interrupt, transparent loudness
+ * normalization, 5-preset 3-band Equalizer, low-overhead AnalyserNode telemetry,
+ * independent One-Shot SFX bus, and strict Web Audio node lifecycle cleanup.
  */
+
+import { synthesizeOneShotSfx } from './sfx-engine.js';
 
 export function pickLeastPlayedRandomTrack(tracks) {
   if (!tracks || tracks.length === 0) return null;
@@ -150,12 +153,16 @@ export class AudioEngine {
     this.eqMid = null;
     this.eqHigh = null;
     this.eqPreset = 'neutral';
+    this.analyser = null;
+    this._analyserData = null;
+    this._fadingChains = new Set();
     this.currentSource = null;
     this.currentTrackGain = null;
     this.currentAudioElement = null;
     this.currentTrack = null;
     this.currentObjectUrl = null;
     this.volume = 1.0;
+    this.sfxVolume = 0.9;
     this.autoNormalize = true;
 
     this.onTrackStart = null;
@@ -190,6 +197,16 @@ export class AudioEngine {
         this.masterGain = this.audioCtx.createGain();
         this.masterGain.gain.setValueAtTime(this.volume, now);
         this.masterGain.connect(this.audioCtx.destination);
+
+        // Low-overhead side-tap AnalyserNode (fftSize=64 -> 32 bins) for live visualizer & VU meter
+        if (typeof this.audioCtx.createAnalyser === 'function') {
+          this.analyser = this.audioCtx.createAnalyser();
+          this.analyser.fftSize = 64;
+          this.analyser.smoothingTimeConstant = 0.72;
+          this.masterGain.connect(this.analyser);
+          const binCount = this.analyser.frequencyBinCount || 32;
+          this._analyserData = new Uint8Array(binCount);
+        }
 
         // Transparent brickwall ceiling limiter (-2.0 dB threshold) to prevent clipping without dulling transients
         if (typeof this.audioCtx.createDynamicsCompressor === 'function') {
@@ -534,7 +551,17 @@ export class AudioEngine {
       trackGain.gain.setValueAtTime(currentGainVal, now);
       trackGain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
 
-      setTimeout(() => {
+      const chainEntry = {
+        audio,
+        source,
+        trackGain,
+        objectUrl: objectUrlToRevoke,
+        timerId: null
+      };
+      this._fadingChains.add(chainEntry);
+
+      chainEntry.timerId = setTimeout(() => {
+        this._fadingChains.delete(chainEntry);
         if (typeof audio.pause === 'function') {
           audio.pause();
         }
@@ -561,6 +588,127 @@ export class AudioEngine {
     if (this.onTrackStop) {
       this.onTrackStop();
     }
+  }
+
+  /**
+   * Returns true while one or more audio chains are in the middle of a fade-out
+   */
+  isFadingOut() {
+    return this._fadingChains.size > 0;
+  }
+
+  /**
+   * Immediately interrupts active playback or any ongoing 3s fade-out with a fast micro-cut (default 80ms)
+   * @param {number} [cutMs=80]
+   * @returns {boolean} true if active or fading audio was cut
+   */
+  hardStop(cutMs = 80) {
+    let hadAudio = false;
+
+    if (this.currentAudioElement) {
+      hadAudio = true;
+      this.stop(cutMs);
+    }
+
+    const activeFades = Array.from(this._fadingChains);
+    for (const entry of activeFades) {
+      hadAudio = true;
+      if (entry.timerId) {
+        clearTimeout(entry.timerId);
+        entry.timerId = null;
+      }
+      this._fadingChains.delete(entry);
+
+      const { audio, source, trackGain, objectUrl } = entry;
+      if (cutMs > 0 && trackGain && this.audioCtx) {
+        const now = this.audioCtx.currentTime || 0;
+        const currentVal =
+          trackGain.gain && typeof trackGain.gain.value === 'number'
+            ? Math.max(trackGain.gain.value, 0.001)
+            : 0.5;
+        trackGain.gain.cancelScheduledValues?.(now);
+        trackGain.gain.setValueAtTime?.(currentVal, now);
+        trackGain.gain.exponentialRampToValueAtTime?.(0.0001, now + cutMs / 1000);
+
+        setTimeout(() => {
+          this._cleanupAudioChain({ audio, source, trackGain, objectUrl });
+        }, cutMs);
+      } else {
+        this._cleanupAudioChain({ audio, source, trackGain, objectUrl });
+      }
+    }
+
+    return hadAudio;
+  }
+
+  /**
+   * Reads lightweight 4-band frequency energy and peak level from AnalyserNode
+   * @returns {{ bars: number[], peak: number, clipping: boolean } | null}
+   */
+  getAudioLevels() {
+    if (
+      !this.analyser ||
+      !this._analyserData ||
+      typeof this.analyser.getByteFrequencyData !== 'function'
+    ) {
+      return null;
+    }
+
+    this.analyser.getByteFrequencyData(this._analyserData);
+    const data = this._analyserData;
+    const len = data.length;
+    if (len === 0) return null;
+
+    const avgRange = (start, end) => {
+      const s = Math.min(start, len - 1);
+      const e = Math.min(end, len - 1);
+      let sum = 0;
+      let count = 0;
+      for (let i = s; i <= e; i++) {
+        sum += data[i];
+        count++;
+      }
+      return count > 0 ? sum / (count * 255) : 0;
+    };
+
+    const b0 = avgRange(0, 2);   // Sub / Kick
+    const b1 = avgRange(3, 6);   // Low-Mid
+    const b2 = avgRange(7, 14);  // High-Mid
+    const b3 = avgRange(15, 26); // Presence / Highs
+
+    let maxByte = 0;
+    for (let i = 0; i < len; i++) {
+      if (data[i] > maxByte) maxByte = data[i];
+    }
+    const peak = maxByte / 255;
+
+    return {
+      bars: [b0, b1, b2, b3],
+      peak,
+      clipping: peak > 0.94
+    };
+  }
+
+  setSfxVolume(val) {
+    const num = Number(val);
+    this.sfxVolume = Math.max(0, Math.min(1, Number.isFinite(num) ? num : 0.9));
+  }
+
+  getSfxVolume() {
+    return this.sfxVolume;
+  }
+
+  /**
+   * Triggers a one-shot synthesized SFX on an independent bus without interrupting current music
+   * @param {string} sfxId
+   * @returns {boolean}
+   */
+  playOneShotSfx(sfxId) {
+    this.initAudioContext();
+    if (!this.audioCtx) return false;
+    const targetNode = this.compressor || this.masterGain || this.audioCtx.destination;
+    if (!targetNode) return false;
+    return synthesizeOneShotSfx(this.audioCtx, targetNode, sfxId, this.sfxVolume);
   }
 
   getCurrentTrack() {

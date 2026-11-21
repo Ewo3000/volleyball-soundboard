@@ -17,12 +17,15 @@ test('Theming Engine: Theme constants and utility validation in js/theme.js', as
 
   assert.equal(THEMES.CLASSIC, 'classic');
   assert.equal(THEMES.M3_EXPRESSIVE, 'm3-expressive');
+  assert.equal(THEMES.LIGHT_HALL, 'light-hall');
   assert.equal(THEME_STORAGE_KEY, 'sv1845_theme');
   assert.equal(THEME_COLORS.classic, '#0B0F17');
   assert.equal(THEME_COLORS['m3-expressive'], '#0A0E17');
+  assert.equal(THEME_COLORS['light-hall'], '#F1F5F9');
 
   assert.equal(isValidTheme('classic'), true);
   assert.equal(isValidTheme('m3-expressive'), true);
+  assert.equal(isValidTheme('light-hall'), true);
   assert.equal(isValidTheme('dark'), false);
   assert.equal(isValidTheme(''), false);
   assert.equal(isValidTheme(null), false);
@@ -51,11 +54,19 @@ test('Theming Engine: setTheme, toggleTheme, and localStorage lifecycle', async 
     getAttribute: (key) => metaAttrs.get(key) || null
   };
 
+  const colorSchemeAttrs = new Map();
+  const mockColorSchemeMeta = {
+    setAttribute: (key, val) => colorSchemeAttrs.set(key, String(val)),
+    getAttribute: (key) => colorSchemeAttrs.get(key) || null
+  };
+
   const btnAttrs = new Map();
   const mockToggleBtn = {
     setAttribute: (key, val) => btnAttrs.set(key, String(val)),
     getAttribute: (key) => btnAttrs.get(key) || null
   };
+
+  const themeDesc = { textContent: '' };
 
   const origWindow = globalThis.window;
   const origDoc = globalThis.document;
@@ -69,10 +80,13 @@ test('Theming Engine: setTheme, toggleTheme, and localStorage lifecycle', async 
     documentElement: mockDocElement,
     querySelector: (selector) => {
       if (selector === 'meta[name="theme-color"]') return mockMeta;
+      if (selector === 'meta[name="color-scheme"]') return mockColorSchemeMeta;
       return null;
     },
+    querySelectorAll: () => [],
     getElementById: (id) => {
       if (id === 'btn-theme-toggle') return mockToggleBtn;
+      if (id === 'settings-theme-desc') return themeDesc;
       return null;
     }
   };
@@ -87,24 +101,37 @@ test('Theming Engine: setTheme, toggleTheme, and localStorage lifecycle', async 
     assert.equal(mockLocalStorage.getItem(THEME_STORAGE_KEY), 'm3-expressive');
     assert.equal(mockDocElement.getAttribute('data-theme'), 'm3-expressive');
     assert.equal(metaAttrs.get('content'), '#0A0E17');
+    assert.equal(colorSchemeAttrs.get('content'), 'dark');
     assert.equal(btnAttrs.get('aria-pressed'), 'true');
     assert.ok(btnAttrs.get('aria-label').includes('Material 3 Expressive'));
 
-    // 3. Toggle back to classic
+    // 3. Toggle cycles M3-expressive -> light-hall
+    const toggledLight = toggleTheme();
+    assert.equal(toggledLight, 'light-hall');
+    assert.equal(mockLocalStorage.getItem(THEME_STORAGE_KEY), 'light-hall');
+    assert.equal(mockDocElement.getAttribute('data-theme'), 'light-hall');
+    assert.equal(metaAttrs.get('content'), '#F1F5F9');
+    assert.equal(colorSchemeAttrs.get('content'), 'light');
+    assert.equal(btnAttrs.get('aria-pressed'), 'true');
+    assert.ok(btnAttrs.get('aria-label').includes('Helle Halle'));
+    assert.ok(themeDesc.textContent.includes('Helle Halle'));
+
+    // 4. Toggle cycles light-hall -> classic
     const toggledClassic = toggleTheme();
     assert.equal(toggledClassic, 'classic');
     assert.equal(mockLocalStorage.getItem(THEME_STORAGE_KEY), 'classic');
     assert.equal(mockDocElement.getAttribute('data-theme'), 'classic');
     assert.equal(metaAttrs.get('content'), '#0B0F17');
+    assert.equal(colorSchemeAttrs.get('content'), 'dark');
     assert.equal(btnAttrs.get('aria-pressed'), 'false');
     assert.ok(btnAttrs.get('aria-label').includes('Klassisch'));
 
-    // 4. Toggle back to M3
+    // 5. Toggle cycles classic -> m3-expressive
     const toggledM3 = toggleTheme();
     assert.equal(toggledM3, 'm3-expressive');
     assert.equal(mockDocElement.getAttribute('data-theme'), 'm3-expressive');
 
-    // 5. Invalid theme input falls back to classic safely
+    // 6. Invalid theme input falls back to classic safely
     const fallback = setTheme('invalid-theme-test');
     assert.equal(fallback, 'classic');
     assert.equal(mockDocElement.getAttribute('data-theme'), 'classic');
@@ -201,13 +228,15 @@ test('Strict Offline Autonomy: Zero external CDN or Google Fonts imports in css/
   assert.ok(!css.includes('https://'), 'Must not contain https external links in CSS');
 });
 
-test('sw.js invalidates cache version and includes js/theme.js in APP_SHELL_ASSETS', () => {
+test('sw.js invalidates cache version and includes js/theme.js & js/sfx-engine.js in APP_SHELL_ASSETS', () => {
   const sw = fs.readFileSync(SW_PATH, 'utf8');
 
-  // Verify version incremented to 1.14.x
-  assert.ok(sw.includes('sv1845-dj-v1.14.1') || sw.includes('sv1845-dj-v1.14.0'), 'sw.js cache version must be incremented');
+  // Verify version incremented to 1.15.x
+  assert.ok(sw.includes('sv1845-dj-v1.15.0'), 'sw.js cache version must be incremented to v1.15.0');
 
-  // Verify js/theme.js is cached
+  // Verify js/theme.js and js/sfx-engine.js are cached
   assert.ok(sw.includes('js/theme.js'), 'sw.js must cache js/theme.js for 100% offline capability');
   assert.ok(fs.existsSync(path.join(rootDir, 'js/theme.js')), 'js/theme.js must exist on disk');
+  assert.ok(sw.includes('js/sfx-engine.js'), 'sw.js must cache js/sfx-engine.js for 100% offline capability');
+  assert.ok(fs.existsSync(path.join(rootDir, 'js/sfx-engine.js')), 'js/sfx-engine.js must exist on disk');
 });

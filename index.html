@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0B0F17">
+  <meta name="color-scheme" content="dark">
   <meta name="description" content="DJ Soundboard & Pult für Volleyballspiele des SV 1845 Esslingen">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,12 +16,19 @@
     (function() {
       try {
         var savedTheme = localStorage.getItem('sv1845_theme') || 'classic';
+        var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        var colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
         if (savedTheme === 'm3-expressive') {
           document.documentElement.setAttribute('data-theme', 'm3-expressive');
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', '#0A0E17');
+          if (themeColorMeta) themeColorMeta.setAttribute('content', '#0A0E17');
+          if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', 'dark');
+        } else if (savedTheme === 'light-hall') {
+          document.documentElement.setAttribute('data-theme', 'light-hall');
+          if (themeColorMeta) themeColorMeta.setAttribute('content', '#F1F5F9');
+          if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', 'light');
         } else {
           document.documentElement.setAttribute('data-theme', 'classic');
+          if (colorSchemeMeta) colorSchemeMeta.setAttribute('content', 'dark');
         }
       } catch (e) {}
     })();
@@ -122,29 +130,42 @@
             <button type="button" class="btn-search-clear" id="btn-search-clear" title="Suche leeren" aria-label="Suche leeren" style="display: none;">✕</button>
             <span class="search-counter-badge" id="search-results-badge">0 Treffer</span>
           </div>
+          <!-- Compact Now-Playing Pill (visible when header banner is collapsed) -->
+          <button type="button" class="compact-now-playing" id="compact-now-playing" style="display: none;" title="Aktueller Song – Klicken zum Spulen" aria-haspopup="dialog">
+            <span class="now-playing-bars compact-np-bars" aria-hidden="true">
+              <span class="np-bar np-bar-1"></span>
+              <span class="np-bar np-bar-2"></span>
+              <span class="np-bar np-bar-3"></span>
+              <span class="np-bar np-bar-4"></span>
+            </span>
+            <span class="compact-np-title" id="compact-now-playing-title"></span>
+            <span class="compact-np-time" id="compact-now-playing-time">0:00</span>
+          </button>
         </div>
 
         <div class="controls-right">
-          <div class="volume-group" title="Master-Lautstärke">
+          <div class="volume-group" title="Master-Lautstärke & Ausgangspegel">
             <span class="volume-icon">🔊</span>
-            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100">
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="100" aria-label="Master-Lautstärke">
             <span class="volume-value" id="volume-display">100%</span>
+            <span class="vu-meter" id="master-vu-meter" aria-hidden="true">
+              <span class="vu-meter-fill" id="master-vu-fill"></span>
+            </span>
           </div>
+          <button type="button" class="btn-header-tool btn-warmup-toggle" id="btn-warmup-toggle" aria-pressed="false" title="Warm-Up Auto-Play (spielt automatisch nächsten ungespielten Song)">
+            🔁 <span class="btn-tool-label">Warm-Up</span>
+          </button>
+          <button type="button" class="btn-header-tool btn-sfx-menu" id="btn-sfx-menu" aria-haspopup="dialog" aria-expanded="false" title="One-Shot Stadion-Effekte (Overlay) öffnen">
+            📢 <span class="btn-tool-label">SFX</span>
+          </button>
           <button type="button" class="btn-header-tool btn-eq-menu" id="btn-eq-menu" aria-haspopup="dialog" aria-expanded="false" title="Equalizer & Automatische Lautstärke-Angleichung öffnen">
             🎛️ <span id="eq-menu-label">Sound / EQ</span>
           </button>
-          <button type="button" class="btn-header-tool btn-theme-toggle" id="btn-theme-toggle" aria-label="Theme wechseln (Aktuell: Klassisch)" title="Theme wechseln (Klassisch / Material 3 Expressive)">
-            🎨
-          </button>
-          <button type="button" class="btn-header-tool btn-reset-counts" id="btn-reset-counts" title="Alle Play-Counts zurücksetzen">
-            Reset
-          </button>
-          <button type="button" class="btn-header-tool btn-clear-all" id="btn-clear-all" title="Alle Songs aus der Liste entfernen">
-            🗑 Leeren
-          </button>
-          <button type="button" class="btn-header-tool btn-check-update" id="btn-check-update" title="Nach App-Updates suchen" aria-label="Nach App-Updates suchen">🔄</button>
           <button type="button" class="btn-header-tool btn-fullscreen" id="btn-fullscreen" title="Vollbild umschalten">
             Vollbild
+          </button>
+          <button type="button" class="btn-header-tool btn-settings-menu" id="btn-settings-menu" aria-haspopup="dialog" aria-expanded="false" aria-label="Einstellungen & Werkzeuge öffnen" title="Einstellungen, Theme, Update & Spieltag-Reset">
+            ⚙️
           </button>
         </div>
       </div>
@@ -157,6 +178,17 @@
           <div class="pause-hourglass-icon">⏳</div>
           <div class="pause-overlay-title">Satzpause</div>
           <div class="pause-track-name" id="pause-overlay-track-name">Pausensong läuft...</div>
+          <div class="pause-timer-box" id="pause-timer-box">
+            <div class="pause-countdown" id="pause-countdown" aria-live="off">3:00</div>
+            <div class="pause-countdown-bar" aria-hidden="true">
+              <div class="pause-countdown-fill" id="pause-countdown-fill"></div>
+            </div>
+            <div class="pause-timer-controls">
+              <button type="button" class="btn-pause-timer" id="btn-pause-add30" title="30 Sekunden hinzufügen">+30s</button>
+              <button type="button" class="btn-pause-timer" id="btn-pause-reset" title="Timer auf 3:00 zurücksetzen">↺ 3:00</button>
+              <button type="button" class="btn-pause-timer btn-pause-autofade is-active" id="btn-pause-autofade" aria-pressed="true" title="Bei 0:05 automatisch ausfaden">Auto-Fade 0:05</button>
+            </div>
+          </div>
           <div class="pause-overlay-hint">Musik stoppen über ■ STOP</div>
         </div>
       </div>
@@ -195,38 +227,47 @@
           </div>
         </section>
 
-        <!-- 4. Sonstiges 1 -->
-        <section class="soundboard-column col-sonstiges-1" data-category="sonstiges_1">
-          <div class="column-header">
+        <!-- 4–6. Sonstiges (Übergreifender Gruppenkopf über 3 Spalten) -->
+        <div class="sonstiges-group" data-category="sonstiges">
+          <div class="sonstiges-group-header column-header">
             <h2 class="column-title">Sonstiges</h2>
-            <span class="col-count">0</span>
+            <span class="col-count" id="sonstiges-total-count">0</span>
           </div>
-          <div class="column-tracks" id="col-tracks-sonstiges_1">
-            <div class="column-empty">Keine Songs</div>
-          </div>
-        </section>
+          <div class="sonstiges-subcolumns">
+            <!-- 4. Sonstiges 1 -->
+            <section class="soundboard-column col-sonstiges-1" data-category="sonstiges_1">
+              <div class="column-header">
+                <h2 class="column-title">Sonstiges</h2>
+                <span class="col-count">0</span>
+              </div>
+              <div class="column-tracks" id="col-tracks-sonstiges_1">
+                <div class="column-empty">Keine Songs</div>
+              </div>
+            </section>
 
-        <!-- 5. Sonstiges 2 -->
-        <section class="soundboard-column col-sonstiges-2" data-category="sonstiges_2">
-          <div class="column-header">
-            <h2 class="column-title">Sonstiges</h2>
-            <span class="col-count">0</span>
-          </div>
-          <div class="column-tracks" id="col-tracks-sonstiges_2">
-            <div class="column-empty">Keine Songs</div>
-          </div>
-        </section>
+            <!-- 5. Sonstiges 2 -->
+            <section class="soundboard-column col-sonstiges-2" data-category="sonstiges_2">
+              <div class="column-header">
+                <h2 class="column-title">Sonstiges</h2>
+                <span class="col-count">0</span>
+              </div>
+              <div class="column-tracks" id="col-tracks-sonstiges_2">
+                <div class="column-empty">Keine Songs</div>
+              </div>
+            </section>
 
-        <!-- 6. Sonstiges 3 -->
-        <section class="soundboard-column col-sonstiges-3" data-category="sonstiges_3">
-          <div class="column-header">
-            <h2 class="column-title">Sonstiges</h2>
-            <span class="col-count">0</span>
+            <!-- 6. Sonstiges 3 -->
+            <section class="soundboard-column col-sonstiges-3" data-category="sonstiges_3">
+              <div class="column-header">
+                <h2 class="column-title">Sonstiges</h2>
+                <span class="col-count">0</span>
+              </div>
+              <div class="column-tracks" id="col-tracks-sonstiges_3">
+                <div class="column-empty">Keine Songs</div>
+              </div>
+            </section>
           </div>
-          <div class="column-tracks" id="col-tracks-sonstiges_3">
-            <div class="column-empty">Keine Songs</div>
-          </div>
-        </section>
+        </div>
 
         <!-- 7. Spaß & Extras -->
         <section class="soundboard-column col-spass col-spass_extras" data-category="spass_extras">
@@ -242,9 +283,17 @@
 
       <!-- Mobile Portrait Pad -->
       <div id="mobile-view" class="mobile-pad mobile-quick-pad">
-        <button type="button" class="btn-open-drawer" id="btn-open-drawer">
-          📂 Alle Songs & Kategorien
-        </button>
+        <div class="mobile-top-actions">
+          <button type="button" class="btn-open-drawer" id="btn-open-drawer">
+            📂 Alle Songs & Kategorien
+          </button>
+          <button type="button" class="btn-mobile-tool btn-sfx-menu" id="btn-mobile-sfx" aria-haspopup="dialog" title="One-Shot Stadion-Effekte">
+            📢 SFX
+          </button>
+          <button type="button" class="btn-mobile-tool btn-warmup-toggle" id="btn-mobile-warmup" aria-pressed="false" title="Warm-Up Auto-Play">
+            🔁 Warm-Up
+          </button>
+        </div>
 
         <div class="mobile-quick-grid">
           <button type="button" class="mobile-quick-btn btn-ace" id="btn-mobile-ace" data-action="ace">
@@ -265,6 +314,7 @@
           </button>
           <button type="button" class="mobile-quick-btn btn-timeout" id="btn-mobile-timeout" data-action="timeout">
             <span class="btn-main-text">⏱ Timeout</span>
+            <span class="btn-timer-badge" id="timeout-countdown-mobile" aria-hidden="true"></span>
           </button>
           <button type="button" class="mobile-quick-btn btn-walkon" id="btn-mobile-walkon" data-action="walkon">
             <span class="btn-main-text">🚶 Walk-On</span>
@@ -278,7 +328,8 @@
         </div>
 
         <button type="button" class="mobile-stop-btn btn-stop" id="btn-mobile-stop" data-action="stop">
-          ■ STOP
+          <span class="btn-main-text">■ STOP</span>
+          <span class="btn-subtext stop-fade-hint" aria-hidden="true"></span>
         </button>
       </div>
     </main>
@@ -289,6 +340,7 @@
       <div class="quick-group stacked-group">
         <button type="button" class="quick-btn btn-timeout stacked-btn" id="btn-timeout" data-action="timeout">
           <span class="btn-main-text">⏱ Timeout</span>
+          <span class="btn-timer-badge" id="timeout-countdown-desktop" aria-hidden="true"></span>
         </button>
         <button type="button" class="quick-btn btn-walkon stacked-btn" id="btn-walkon" data-action="walkon">
           <span class="btn-main-text">🚶 Walk-On</span>
@@ -336,6 +388,7 @@
       <div class="quick-group">
         <button type="button" class="quick-btn btn-stop" id="btn-stop" data-action="stop">
           <span class="btn-main-text">■ STOP</span>
+          <span class="btn-subtext stop-fade-hint" aria-hidden="true"></span>
         </button>
       </div>
     </footer>
@@ -469,6 +522,124 @@
         </div>
       </div>
     </div>
+
+    <!-- One-Shot SFX Overlay Jingles Popup (Native <dialog>) -->
+    <dialog id="sfx-modal" class="app-dialog sfx-dialog" closedby="any" aria-labelledby="sfx-modal-title">
+      <div class="scrubber-card sfx-card">
+        <div class="scrubber-header sfx-header">
+          <div class="scrubber-header-left">
+            <span class="scrubber-badge sfx-badge">ONE-SHOT SFX</span>
+            <h3 class="scrubber-title" id="sfx-modal-title">Stadion-Effekte</h3>
+          </div>
+          <button type="button" class="btn-close-scrubber" id="btn-close-sfx" aria-label="Schließen" autofocus>✕</button>
+        </div>
+        <p class="sfx-overlay-hint">Spielt direkt über laufender Musik — stoppt keinen Song.</p>
+        <div class="sfx-pads-grid" id="sfx-pads-grid">
+          <button type="button" class="sfx-pad-btn sfx-accent-red" data-sfx-id="airhorn">
+            <span class="sfx-pad-icon" aria-hidden="true">📢</span>
+            <span class="sfx-pad-name">Airhorn</span>
+            <span class="sfx-pad-desc">Stadion-Hornstoß</span>
+          </button>
+          <button type="button" class="sfx-pad-btn sfx-accent-magenta" data-sfx-id="monster_block">
+            <span class="sfx-pad-icon" aria-hidden="true">💥</span>
+            <span class="sfx-pad-name">Block-Boom</span>
+            <span class="sfx-pad-desc">808-Impact</span>
+          </button>
+          <button type="button" class="sfx-pad-btn sfx-accent-amber" data-sfx-id="fanfare">
+            <span class="sfx-pad-icon" aria-hidden="true">📯</span>
+            <span class="sfx-pad-name">Fanfare</span>
+            <span class="sfx-pad-desc">Punkt-Dreiklang</span>
+          </button>
+          <button type="button" class="sfx-pad-btn sfx-accent-blue" data-sfx-id="clap">
+            <span class="sfx-pad-icon" aria-hidden="true">👏</span>
+            <span class="sfx-pad-name">Stadion-Clap</span>
+            <span class="sfx-pad-desc">3er-Klatsch-Beat</span>
+          </button>
+          <button type="button" class="sfx-pad-btn sfx-accent-purple" data-sfx-id="drumroll">
+            <span class="sfx-pad-icon" aria-hidden="true">🥁</span>
+            <span class="sfx-pad-name">Tusch / Wirbel</span>
+            <span class="sfx-pad-desc">Snare + Becken</span>
+          </button>
+          <button type="button" class="sfx-pad-btn sfx-accent-emerald" data-sfx-id="charge">
+            <span class="sfx-pad-icon" aria-hidden="true">⚡</span>
+            <span class="sfx-pad-name">Power-Charge</span>
+            <span class="sfx-pad-desc">Stadionorgel</span>
+          </button>
+        </div>
+        <div class="scrubber-gain-section sfx-volume-section">
+          <div class="scrubber-gain-header">
+            <label for="sfx-volume-slider" class="scrubber-gain-label">📢 Effekt-Lautstärke</label>
+            <span class="scrubber-gain-value" id="sfx-volume-value">90%</span>
+          </div>
+          <input type="range" class="scrubber-slider sfx-volume-slider" id="sfx-volume-slider" min="20" max="100" value="90" step="5" aria-label="Effekt-Lautstärke">
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Settings & Maintenance Popup (Native <dialog>) -->
+    <dialog id="settings-modal" class="app-dialog settings-dialog" closedby="any" aria-labelledby="settings-modal-title">
+      <div class="scrubber-card settings-card">
+        <div class="scrubber-header settings-header">
+          <div class="scrubber-header-left">
+            <span class="scrubber-badge settings-badge">EINSTELLUNGEN</span>
+            <h3 class="scrubber-title" id="settings-modal-title">Werkzeuge &amp; Design</h3>
+          </div>
+          <button type="button" class="btn-close-scrubber" id="btn-close-settings" aria-label="Schließen" autofocus>✕</button>
+        </div>
+        <div class="settings-body">
+          <!-- Section 1: Theme Selection -->
+          <section class="settings-section">
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">Design-Theme</span>
+                <span class="settings-row-desc" id="settings-theme-desc">Aktiv: Klassisch</span>
+              </div>
+              <button type="button" class="btn-header-tool btn-theme-toggle" id="btn-theme-toggle" aria-label="Theme wechseln (Aktuell: Klassisch)" title="Theme wechseln (Klassisch / Material 3 Expressive / Helle Halle)">
+                🎨
+              </button>
+            </div>
+            <div class="theme-choices-grid" role="radiogroup" aria-label="Design-Theme wählen">
+              <button type="button" class="theme-choice-btn is-active" data-theme-choice="classic" role="radio" aria-checked="true">
+                <span class="theme-choice-icon" aria-hidden="true">🌙</span>
+                <span class="theme-choice-label">Klassisch</span>
+              </button>
+              <button type="button" class="theme-choice-btn" data-theme-choice="m3-expressive" role="radio" aria-checked="false">
+                <span class="theme-choice-icon" aria-hidden="true">✨</span>
+                <span class="theme-choice-label">M3 Expressive</span>
+              </button>
+              <button type="button" class="theme-choice-btn" data-theme-choice="light-hall" role="radio" aria-checked="false">
+                <span class="theme-choice-icon" aria-hidden="true">☀️</span>
+                <span class="theme-choice-label">Helle Halle</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Section 2: System & Updates -->
+          <section class="settings-section">
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">App-Version &amp; Update</span>
+                <span class="settings-row-desc">SV 1845 Volleyball DJ · v1.15.0</span>
+              </div>
+              <button type="button" class="btn-header-tool btn-check-update" id="btn-check-update" title="Nach App-Updates suchen" aria-label="Nach App-Updates suchen">🔄</button>
+            </div>
+          </section>
+
+          <!-- Section 3: Protected Danger Zone -->
+          <section class="settings-section settings-danger-zone">
+            <div class="settings-danger-title">⚠️ Spieltags-Reset &amp; Mediathek</div>
+            <div class="settings-danger-actions">
+              <button type="button" class="btn-header-tool btn-reset-counts" id="btn-reset-counts" title="Alle Play-Counts zurücksetzen">
+                Reset
+              </button>
+              <button type="button" class="btn-header-tool btn-clear-all" id="btn-clear-all" title="Alle Songs aus der Liste entfernen">
+                🗑 Leeren
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </dialog>
   </div>
 
 

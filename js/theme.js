@@ -1,19 +1,34 @@
 /**
  * SV 1845 Esslingen - Volleyball DJ Soundboard
  * Non-destructive Theming Engine (js/theme.js)
- * Supports 'classic' (100% legacy look) and 'm3-expressive' (Material 3 Expressive)
+ * Supports 'classic' (100% legacy look), 'm3-expressive' (Material 3 Expressive),
+ * and 'light-hall' (Helle Halle / High Contrast daylight mode).
  */
 
 export const THEMES = {
   CLASSIC: 'classic',
-  M3_EXPRESSIVE: 'm3-expressive'
+  M3_EXPRESSIVE: 'm3-expressive',
+  LIGHT_HALL: 'light-hall'
 };
+
+export const THEME_ORDER = [
+  THEMES.CLASSIC,
+  THEMES.M3_EXPRESSIVE,
+  THEMES.LIGHT_HALL
+];
 
 export const THEME_STORAGE_KEY = 'sv1845_theme';
 
 export const THEME_COLORS = {
   classic: '#0B0F17',
-  'm3-expressive': '#0A0E17'
+  'm3-expressive': '#0A0E17',
+  'light-hall': '#F1F5F9'
+};
+
+export const THEME_LABELS = {
+  classic: 'Klassisch',
+  'm3-expressive': 'Material 3 Expressive',
+  'light-hall': 'Helle Halle (Kontrast)'
 };
 
 /**
@@ -22,7 +37,7 @@ export const THEME_COLORS = {
  * @returns {boolean}
  */
 export function isValidTheme(theme) {
-  return theme === THEMES.CLASSIC || theme === THEMES.M3_EXPRESSIVE;
+  return THEME_ORDER.includes(theme);
 }
 
 /**
@@ -77,23 +92,47 @@ export function setTheme(themeName) {
   if (typeof document !== 'undefined' && document.documentElement) {
     document.documentElement.setAttribute('data-theme', normalizedTheme);
 
+    const isLight = normalizedTheme === THEMES.LIGHT_HALL;
+
     // Update meta theme-color for tablet & mobile PWA status bars
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const metaThemeColor = document.querySelector?.('meta[name="theme-color"]');
     if (metaThemeColor) {
       const color = THEME_COLORS[normalizedTheme] || THEME_COLORS.classic;
       metaThemeColor.setAttribute('content', color);
     }
 
-    // Update UI toggle button state and aria attributes
-    const toggleBtn = document.getElementById('btn-theme-toggle');
+    // Update meta color-scheme so scrollbars and native controls match
+    const metaColorScheme = document.querySelector?.('meta[name="color-scheme"]');
+    if (metaColorScheme) {
+      metaColorScheme.setAttribute('content', isLight ? 'light' : 'dark');
+    }
+
+    const themeLabel = THEME_LABELS[normalizedTheme] || THEME_LABELS.classic;
+
+    // Update compact toggle button state and aria attributes
+    const toggleBtn = document.getElementById?.('btn-theme-toggle');
     if (toggleBtn) {
-      const isM3 = normalizedTheme === THEMES.M3_EXPRESSIVE;
-      const themeLabel = isM3 ? 'Material 3 Expressive' : 'Klassisch';
+      const isNonDefault = normalizedTheme !== THEMES.CLASSIC;
       toggleBtn.setAttribute('aria-label', `Theme wechseln (Aktuell: ${themeLabel})`);
       toggleBtn.setAttribute('title', `Theme wechseln (Aktuell: ${themeLabel})`);
       toggleBtn.setAttribute('data-theme', normalizedTheme);
-      toggleBtn.setAttribute('aria-pressed', isM3 ? 'true' : 'false');
+      toggleBtn.setAttribute('aria-pressed', isNonDefault ? 'true' : 'false');
     }
+
+    // Update current theme text indicator in Settings modal
+    const themeDesc = document.getElementById?.('settings-theme-desc');
+    if (themeDesc) {
+      themeDesc.textContent = `Aktiv: ${themeLabel}`;
+    }
+
+    // Update direct theme choice buttons in Settings modal
+    const choiceBtns = document.querySelectorAll?.('.theme-choice-btn[data-theme-choice]');
+    choiceBtns?.forEach?.((btn) => {
+      const choice = btn.getAttribute?.('data-theme-choice');
+      const isSelected = choice === normalizedTheme;
+      btn.classList?.toggle?.('is-active', isSelected);
+      btn.setAttribute?.('aria-checked', String(isSelected));
+    });
   }
 
   // 3. Dispatch custom themechange event
@@ -111,13 +150,14 @@ export function setTheme(themeName) {
 }
 
 /**
- * Toggles between 'classic' and 'm3-expressive' themes.
+ * Cycles through 'classic' -> 'm3-expressive' -> 'light-hall' -> 'classic'.
  * @returns {string} The new theme name
  */
 export function toggleTheme() {
   const current = getCurrentTheme();
-  const nextTheme = current === THEMES.M3_EXPRESSIVE ? THEMES.CLASSIC : THEMES.M3_EXPRESSIVE;
-  return setTheme(nextTheme);
+  const idx = THEME_ORDER.indexOf(current);
+  const nextIndex = idx === -1 ? 1 : (idx + 1) % THEME_ORDER.length;
+  return setTheme(THEME_ORDER[nextIndex]);
 }
 
 /**
