@@ -20,7 +20,10 @@ export const CATEGORY_DEFS = {
   timeout: { id: 'timeout', label: 'Timeout', color: 'amber', type: 'quick' },
   walkon: { id: 'walkon', label: 'Walk-On', color: 'blue', type: 'quick' },
   pause: { id: 'pause', label: 'Pausensongs', color: 'slate', type: 'quick' },
-  sixseven: { id: 'sixseven', label: '6/7', color: 'orange', type: 'quick' }
+  sixseven: { id: 'sixseven', label: '6/7', color: 'orange', type: 'quick' },
+
+  // Custom One-Shot SFX overlay tracks
+  sfx: { id: 'sfx', label: 'Effekte (SFX)', color: 'orange', type: 'sfx' }
 };
 
 const SUFFIX_RULES = [
@@ -37,8 +40,13 @@ const SUFFIX_RULES = [
   { regex: /_PAUSE3$/i, category: 'pause', suffix: '_PAUSE3' },
   { regex: /_PAUSE4$/i, category: 'pause', suffix: '_PAUSE4' },
   { regex: /_(?:PAUSE|PAUSENSONG)$/i, category: 'pause', suffix: '_PAUSE' },
-  { regex: /_(?:SIXSEVEN|67)$/i, category: 'sixseven', suffix: '_SIXSEVEN' }
+  { regex: /_(?:SIXSEVEN|67)$/i, category: 'sixseven', suffix: '_SIXSEVEN' },
+  { regex: /_(?:SFX|EFFEKT|EFFECT)$/i, category: 'sfx', suffix: '_SFX' }
 ];
+
+export function isSfxFolderPath(relativePath = '') {
+  return /(?:^|[\\/])(?:effekte|effects|sfx)[\\/]/i.test(String(relativePath || ''));
+}
 
 export function stripExtension(filename) {
   const lastDot = filename.lastIndexOf('.');
@@ -48,7 +56,10 @@ export function stripExtension(filename) {
   return filename;
 }
 
-export function detectCategory(filename) {
+export function detectCategory(filename, relativePath = '') {
+  if (isSfxFolderPath(relativePath)) {
+    return { category: 'sfx', suffix: '_SFX' };
+  }
   const baseName = stripExtension(filename);
   for (const rule of SUFFIX_RULES) {
     if (rule.regex.test(baseName)) {
@@ -70,8 +81,9 @@ export function cleanTrackTitle(filename) {
   return baseName.replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export function parseTrackFromFilename(filename, fileBlob = null, mimeType = 'audio/mpeg') {
-  const { category, suffix } = detectCategory(filename);
+export function parseTrackFromFilename(filename, fileBlob = null, mimeType = 'audio/mpeg', relativePath = '') {
+  const relPath = relativePath || fileBlob?.webkitRelativePath || '';
+  const { category, suffix } = detectCategory(filename, relPath);
   const cleanTitle = cleanTrackTitle(filename);
   const id = `track_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -81,11 +93,21 @@ export function parseTrackFromFilename(filename, fileBlob = null, mimeType = 'au
     cleanTitle,
     category,
     suffix,
+    pinned: false,
     playCount: 0,
     lastPlayed: 0,
     blob: fileBlob,
     type: (fileBlob && fileBlob.type) ? fileBlob.type : (mimeType || 'audio/mpeg')
   };
+}
+
+function compareTracksPinnedFirst(a, b) {
+  const pinA = a?.pinned ? 1 : 0;
+  const pinB = b?.pinned ? 1 : 0;
+  if (pinB !== pinA) {
+    return pinB - pinA;
+  }
+  return (a?.cleanTitle || '').localeCompare(b?.cleanTitle || '', 'de', { sensitivity: 'base' });
 }
 
 export function categorizeTracks(tracks) {
@@ -94,10 +116,8 @@ export function categorizeTracks(tracks) {
     map.set(key, []);
   }
 
-  // Sort all tracks alphabetically
-  const sortedTracks = [...tracks].sort((a, b) =>
-    a.cleanTitle.localeCompare(b.cleanTitle, 'de', { sensitivity: 'base' })
-  );
+  // Sort all tracks (pinned favorites first, then alphabetically)
+  const sortedTracks = [...tracks].sort(compareTracksPinnedFirst);
 
   // Round-robin distribution for all Sonstiges / suffix-less tracks across columns 1, 2, and 3
   const miscColumns = ['sonstiges_1', 'sonstiges_2', 'sonstiges_3'];
@@ -135,9 +155,9 @@ export function categorizeTracks(tracks) {
     }
   }
 
-  // Ensure individual category arrays are sorted
-  for (const [key, list] of map.entries()) {
-    list.sort((a, b) => a.cleanTitle.localeCompare(b.cleanTitle, 'de', { sensitivity: 'base' }));
+  // Ensure individual category arrays keep pinned favorites first, then alphabetical order
+  for (const [, list] of map.entries()) {
+    list.sort(compareTracksPinnedFirst);
   }
 
   return map;

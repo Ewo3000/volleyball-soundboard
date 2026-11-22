@@ -444,7 +444,7 @@ header.header,
 
 .controls-center {
   flex: 1;
-  max-width: 620px;
+  max-width: 720px;
   min-width: 0;
 }
 
@@ -575,7 +575,8 @@ header.header,
 /* Live Search Box */
 .search-wrapper {
   position: relative;
-  width: 100%;
+  flex: 1 1 130px;
+  min-width: 110px;
   display: flex;
   align-items: center;
 }
@@ -3546,6 +3547,458 @@ dialog.app-dialog::backdrop {
 }
 
 /* ==========================================================================
+   v1.16.0: Mini Scoreboard, Pinned Favorites, Custom SFX, Context Menu & Guides
+   ========================================================================== */
+
+/* Pinned Favorite Track Styling (#5) */
+.song-btn.is-pinned,
+.track-btn.is-pinned {
+  border-left: 3px solid #F59E0B;
+}
+
+.pin-star {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+/* Crunch-Time Highlight on Pinned Favorites (#12) */
+.board-container.is-crunch-time .song-btn.is-pinned,
+.board-container.is-crunch-time .track-btn.is-pinned {
+  border-color: #F59E0B;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.32);
+}
+
+/* Optional Header Mini Scoreboard (#12) */
+.header-scoreboard {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-glass);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.header-scoreboard.is-crunch-time {
+  border-color: #F59E0B;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+}
+
+.score-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.btn-score-plus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-white);
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.1s ease;
+}
+
+.score-home .btn-score-plus:hover {
+  background: rgba(27, 117, 188, 0.35);
+}
+
+.score-guest .btn-score-plus:hover {
+  background: rgba(229, 57, 53, 0.3);
+}
+
+.btn-score-plus:active {
+  transform: scale(0.95);
+}
+
+.score-team-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.score-value {
+  font-size: 0.96rem;
+  font-weight: 900;
+  min-width: 18px;
+  text-align: center;
+}
+
+.btn-score-minus,
+.btn-score-tool {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-silver);
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-score-minus:hover,
+.btn-score-tool:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text-white);
+}
+
+.btn-score-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.btn-score-undo.is-recent {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: #F59E0B;
+  color: #FDE047;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.score-center-meta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  gap: 2px;
+}
+
+.score-colon {
+  font-weight: 900;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.score-sets-badge {
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: var(--text-silver);
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.score-crunch-badge {
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  background: #F59E0B;
+  color: #0B0F17;
+}
+
+.score-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+  padding-left: 4px;
+  border-left: 1px solid var(--border-glass);
+}
+
+/* Custom SFX Section inside #sfx-modal (#4) */
+.sfx-custom-section {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(30, 41, 59, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sfx-custom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sfx-section-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-silver);
+}
+
+.sfx-synth-label {
+  margin-bottom: 8px;
+}
+
+.btn-load-sfx {
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.sfx-custom-pads-grid {
+  max-height: 185px;
+  overflow-y: auto;
+}
+
+.sfx-custom-empty {
+  grid-column: 1 / -1;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px 4px;
+  font-style: italic;
+}
+
+.sfx-custom-pad-wrap {
+  position: relative;
+  display: flex;
+}
+
+.sfx-custom-pad-wrap .sfx-custom-pad-btn {
+  width: 100%;
+  min-height: 76px;
+}
+
+.btn-delete-sfx {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-silver);
+  font-size: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn-delete-sfx:hover {
+  background: var(--flame-red);
+  color: #FFFFFF;
+}
+
+/* Song Context Menu Modal (#5) */
+.track-context-card {
+  max-width: 480px;
+  border-color: #F59E0B;
+  box-shadow: 0 12px 42px rgba(0, 0, 0, 0.85), 0 0 24px rgba(245, 158, 11, 0.28);
+}
+
+.track-context-badge {
+  background: #F59E0B;
+  color: #0B0F17;
+}
+
+.track-context-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.track-context-meta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.btn-context-pin {
+  width: 100%;
+  justify-content: center;
+  padding: 9px 14px;
+  font-weight: 700;
+}
+
+.btn-context-pin.is-active {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #F59E0B;
+  color: #FDE047;
+}
+
+.track-context-gain {
+  margin-top: 2px;
+  padding-top: 10px;
+}
+
+.track-context-cats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.context-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
+}
+
+.context-cat-btn {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(30, 41, 59, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-silver);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.context-cat-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-white);
+}
+
+.context-cat-btn.is-active {
+  background: rgba(27, 117, 188, 0.3);
+  border-color: #60A5FA;
+  color: #FFFFFF;
+}
+
+.track-context-danger {
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-context-delete {
+  width: 100%;
+  justify-content: center;
+  padding: 9px 14px;
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(229, 57, 53, 0.5);
+  color: #FCA5A5;
+}
+
+.btn-context-delete:hover {
+  background: rgba(220, 38, 38, 0.38);
+  color: #FFFFFF;
+}
+
+/* Settings Scroll Body, Toggles, Backup & Collapsible <details> Cheat Sheets */
+.settings-scroll-body {
+  max-height: 74dvh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.settings-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 68px;
+  justify-content: center;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.settings-toggle-btn.is-active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #34D399;
+}
+
+.settings-toggle-btn.is-active .auto-norm-dot {
+  background: #10B981;
+  box-shadow: 0 0 8px #10B981;
+}
+
+.settings-backup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.settings-backup-actions .btn-header-tool {
+  justify-content: center;
+  padding: 8px 10px;
+}
+
+.settings-details {
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 10px;
+}
+
+.settings-details summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-white);
+  list-style-position: inside;
+  user-select: none;
+}
+
+.settings-ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.74rem;
+}
+
+.settings-ref-table td {
+  padding: 4px 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-silver);
+  vertical-align: top;
+}
+
+.settings-ref-table td:first-child {
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--text-white);
+  padding-right: 10px;
+}
+
+.settings-ref-table kbd,
+.settings-ref-table code,
+.sfx-section-label code {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  color: #93C5FD;
+}
+
+.settings-ref-tip {
+  margin-top: 8px;
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* M3 Expressive additions for v1.16.0 */
+[data-theme="m3-expressive"] .header-scoreboard {
+  border-radius: var(--radius-pill);
+  background: var(--surface-container);
+}
+
+[data-theme="m3-expressive"] .track-context-card {
+  border-radius: var(--radius-dialog);
+  background: var(--surface-container);
+  border: 1px solid var(--border-glass);
+}
+
+[data-theme="m3-expressive"] .context-cat-btn {
+  border-radius: var(--radius-md);
+}
+
+/* ==========================================================================
    Third Theme: Helle Halle / High Contrast Daylight Mode
    ========================================================================== */
 
@@ -3797,14 +4250,16 @@ dialog.app-dialog::backdrop {
 [data-theme="light-hall"] .scrubber-card,
 [data-theme="light-hall"] .eq-card,
 [data-theme="light-hall"] .sfx-card,
-[data-theme="light-hall"] .settings-card {
+[data-theme="light-hall"] .settings-card,
+[data-theme="light-hall"] .track-context-card {
   background: #FFFFFF;
   color: #0F172A;
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
 }
 
 [data-theme="light-hall"] .scrubber-header,
-[data-theme="light-hall"] .scrubber-gain-section {
+[data-theme="light-hall"] .scrubber-gain-section,
+[data-theme="light-hall"] .track-context-danger {
   border-color: #CBD5E1;
 }
 
@@ -3814,18 +4269,77 @@ dialog.app-dialog::backdrop {
 [data-theme="light-hall"] .eq-norm-section,
 [data-theme="light-hall"] .eq-preset-btn,
 [data-theme="light-hall"] .sfx-pad-btn,
+[data-theme="light-hall"] .sfx-custom-section,
 [data-theme="light-hall"] .settings-section,
-[data-theme="light-hall"] .theme-choice-btn {
+[data-theme="light-hall"] .settings-details,
+[data-theme="light-hall"] .theme-choice-btn,
+[data-theme="light-hall"] .context-cat-btn {
   background: #F1F5F9;
   border-color: #94A3B8;
   color: #0F172A;
 }
 
 [data-theme="light-hall"] .eq-preset-btn.is-active,
-[data-theme="light-hall"] .theme-choice-btn.is-active {
+[data-theme="light-hall"] .theme-choice-btn.is-active,
+[data-theme="light-hall"] .context-cat-btn.is-active {
   background: #DBEAFE;
   border-color: #1D4ED8;
   color: #0F172A;
+}
+
+[data-theme="light-hall"] .btn-context-pin.is-active {
+  background: #FEF3C7;
+  border-color: #D97706;
+  color: #92400E;
+}
+
+[data-theme="light-hall"] .btn-context-delete {
+  background: #FEE2E2;
+  border-color: #DC2626;
+  color: #991B1B;
+}
+
+[data-theme="light-hall"] .settings-ref-table td {
+  border-top-color: #CBD5E1;
+  color: #1E293B;
+}
+
+[data-theme="light-hall"] .settings-ref-table kbd,
+[data-theme="light-hall"] .settings-ref-table code,
+[data-theme="light-hall"] .sfx-section-label code {
+  background: #E2E8F0;
+  border-color: #94A3B8;
+  color: #0B4F8A;
+}
+
+[data-theme="light-hall"] .header-scoreboard {
+  background: #FFFFFF;
+  border-color: #94A3B8;
+}
+
+[data-theme="light-hall"] .btn-score-plus {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+[data-theme="light-hall"] .btn-score-minus,
+[data-theme="light-hall"] .btn-score-tool,
+[data-theme="light-hall"] .score-sets-badge {
+  background: #E2E8F0;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+
+[data-theme="light-hall"] .btn-score-undo.is-recent {
+  background: #FEF3C7;
+  border-color: #D97706;
+  color: #92400E;
+}
+
+[data-theme="light-hall"] .settings-toggle-btn.is-active {
+  background: #D1FAE5;
+  border-color: #047857;
+  color: #065F46;
 }
 
 [data-theme="light-hall"] .settings-danger-zone {
@@ -3894,7 +4408,9 @@ dialog.app-dialog::backdrop {
   .sonstiges-group,
   .scrubber-card,
   .sfx-pad-btn,
-  .theme-choice-btn {
+  .theme-choice-btn,
+  .context-cat-btn,
+  .header-scoreboard {
     border: 1px solid ButtonText !important;
   }
 
@@ -3902,7 +4418,10 @@ dialog.app-dialog::backdrop {
   .track-btn.is-playing,
   .quick-btn.is-playing,
   .eq-preset-btn.is-active,
-  .theme-choice-btn.is-active {
+  .theme-choice-btn.is-active,
+  .context-cat-btn.is-active,
+  .song-btn.is-pinned,
+  .track-btn.is-pinned {
     outline: 3px solid Highlight !important;
   }
 }

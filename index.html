@@ -141,6 +141,33 @@
             <span class="compact-np-title" id="compact-now-playing-title"></span>
             <span class="compact-np-time" id="compact-now-playing-time">0:00</span>
           </button>
+          <!-- Optional Mini Scoreboard (toggleable in Settings) -->
+          <div class="header-scoreboard" id="header-scoreboard" style="display: none;" aria-label="Spielstand">
+            <div class="score-side score-home">
+              <button type="button" class="btn-score-minus" id="btn-score-home-minus" title="Heimpunkt korrigieren (−1)" aria-label="Heimpunkt minus 1">−</button>
+              <button type="button" class="btn-score-plus" id="btn-score-home-plus" title="Punkt SV 1845 (+1)" aria-label="Punkt SV 1845 plus 1">
+                <span class="score-team-tag">SV</span>
+                <span class="score-value" id="score-home-val">0</span>
+              </button>
+            </div>
+            <div class="score-center-meta">
+              <span class="score-colon">:</span>
+              <span class="score-sets-badge" id="score-sets-badge" title="Satzstand (Heim:Gast)">0:0</span>
+              <span class="score-crunch-badge" id="score-crunch-badge" style="display: none;">SATZBALL</span>
+            </div>
+            <div class="score-side score-guest">
+              <button type="button" class="btn-score-plus" id="btn-score-guest-plus" title="Punkt Gast (+1)" aria-label="Punkt Gast plus 1">
+                <span class="score-value" id="score-guest-val">0</span>
+                <span class="score-team-tag">GAST</span>
+              </button>
+              <button type="button" class="btn-score-minus" id="btn-score-guest-minus" title="Gastpunkt korrigieren (−1)" aria-label="Gastpunkt minus 1">−</button>
+            </div>
+            <div class="score-actions">
+              <button type="button" class="btn-score-tool btn-score-undo" id="btn-score-undo" title="Letzte Eingabe rückgängig machen" aria-label="Letzte Spielstand-Eingabe rückgängig machen" disabled>↩</button>
+              <button type="button" class="btn-score-tool" id="btn-score-next-set" title="Satz abschließen &amp; neuen Satz starten" aria-label="Satz abschließen">🏆</button>
+              <button type="button" class="btn-score-tool" id="btn-score-reset" title="Spielstand komplett zurücksetzen" aria-label="Spielstand zurücksetzen">↺</button>
+            </div>
+          </div>
         </div>
 
         <div class="controls-right">
@@ -534,6 +561,18 @@
           <button type="button" class="btn-close-scrubber" id="btn-close-sfx" aria-label="Schließen" autofocus>✕</button>
         </div>
         <p class="sfx-overlay-hint">Spielt direkt über laufender Musik — stoppt keinen Song.</p>
+        <!-- Custom Uploaded SFX Overlay Files -->
+        <div class="sfx-custom-section" id="sfx-custom-section">
+          <div class="sfx-custom-header">
+            <span class="sfx-section-label">🎵 Eigene Effekte (Ordner <code>effekte/</code> oder <code>_SFX</code>)</span>
+            <button type="button" class="btn-header-tool btn-load-sfx" id="btn-load-sfx-files" title="Eigene SFX-Audiodateien direkt hinzufügen">📁 Effekte laden</button>
+            <input type="file" id="file-sfx-input" multiple accept="audio/*" style="display:none">
+          </div>
+          <div class="sfx-pads-grid sfx-custom-pads-grid" id="sfx-custom-pads-grid">
+            <div class="sfx-custom-empty">Keine eigenen Effekte geladen — lege MP3/WAV im Unterordner „effekte/“ ab oder nutze „Effekte laden“.</div>
+          </div>
+        </div>
+        <div class="sfx-section-label sfx-synth-label">🎛️ Eingebaute Stadion-Effekte (Offline-Synth)</div>
         <div class="sfx-pads-grid" id="sfx-pads-grid">
           <button type="button" class="sfx-pad-btn sfx-accent-red" data-sfx-id="airhorn">
             <span class="sfx-pad-icon" aria-hidden="true">📢</span>
@@ -586,7 +625,7 @@
           </div>
           <button type="button" class="btn-close-scrubber" id="btn-close-settings" aria-label="Schließen" autofocus>✕</button>
         </div>
-        <div class="settings-body">
+        <div class="settings-body settings-scroll-body">
           <!-- Section 1: Theme Selection -->
           <section class="settings-section">
             <div class="settings-row">
@@ -614,18 +653,104 @@
             </div>
           </section>
 
-          <!-- Section 2: System & Updates -->
+          <!-- Section 2: Matchday Features & Toggles -->
+          <section class="settings-section">
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">🔊 Bluetooth-Wachhalter</span>
+                <span class="settings-row-desc">Unhörbares Signal hält Bluetooth-Boxen gegen Standby &amp; Lag aktiv</span>
+              </div>
+              <button type="button" class="btn-header-tool settings-toggle-btn" id="btn-bt-keepalive" aria-pressed="false">
+                <span class="auto-norm-dot"></span>
+                <span id="bt-keepalive-status">AUS</span>
+              </button>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">🏐 Mini-Spielstand im Header</span>
+                <span class="settings-row-desc">Heim : Gast + Satzstand inkl. ↩-Rückgängig &amp; Satzball-Hinweis</span>
+              </div>
+              <button type="button" class="btn-header-tool settings-toggle-btn" id="btn-scoreboard-toggle" aria-pressed="false">
+                <span class="auto-norm-dot"></span>
+                <span id="scoreboard-toggle-status">AUS</span>
+              </button>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-title">⌨️ Tastatur- &amp; NumPad-Shortcuts</span>
+                <span class="settings-row-desc">Schnelltasten für Laptop &amp; Bluetooth-NumPad aktivieren</span>
+              </div>
+              <button type="button" class="btn-header-tool settings-toggle-btn is-active" id="btn-shortcuts-toggle" aria-pressed="true">
+                <span class="auto-norm-dot"></span>
+                <span id="shortcuts-toggle-status">EIN</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Section 3: Backup Export / Import -->
+          <section class="settings-section">
+            <div class="settings-row-info">
+              <span class="settings-row-title">💾 Einstellungen-Backup (JSON)</span>
+              <span class="settings-row-desc">Sichert Theme, EQ, Spieltags-Optionen, Favoriten &amp; Pro-Song-Pegel</span>
+            </div>
+            <div class="settings-backup-actions">
+              <button type="button" class="btn-header-tool" id="btn-export-settings">📤 Backup exportieren</button>
+              <button type="button" class="btn-header-tool" id="btn-import-settings">📥 Backup importieren</button>
+              <input type="file" id="file-import-settings" accept="application/json,.json" style="display:none">
+            </div>
+          </section>
+
+          <!-- Section 4: Cheat Sheets (Collapsible <details>) -->
+          <section class="settings-section">
+            <details class="settings-details" id="settings-shortcuts-details">
+              <summary>⌨️ Tastatur- &amp; NumPad-Kürzel anzeigen</summary>
+              <table class="settings-ref-table shortcuts-table">
+                <tbody>
+                  <tr><td><kbd>Leertaste</kbd></td><td>STOP (3s Fade) · 2× schnell = Hard-Cut (80 ms)</td></tr>
+                  <tr><td><kbd>A</kbd> / <kbd>B</kbd></td><td>Ass (<code>_ACE</code>) / Block (<code>_BLOCK</code>)</td></tr>
+                  <tr><td><kbd>E</kbd> / <kbd>G</kbd></td><td>Eigene Punkte (Zufall) / Gegnerpunkte (Zufall)</td></tr>
+                  <tr><td><kbd>T</kbd> / <kbd>W</kbd></td><td>Timeout (30s Timer) / Walk-On</td></tr>
+                  <tr><td><kbd>6</kbd> / <kbd>7</kbd></td><td>6 / 7 Matchday Hype</td></tr>
+                  <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Pausensongs 1 bis 4 (3:00 Timer)</td></tr>
+                  <tr><td><kbd>S</kbd> / <kbd>U</kbd></td><td>SFX-Pop-up öffnen / Warm-Up Auto-Play umschalten</td></tr>
+                  <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Master-Lautstärke ±5 %</td></tr>
+                  <tr><td><kbd>/</kbd></td><td>Songsuche fokussieren</td></tr>
+                </tbody>
+              </table>
+            </details>
+
+            <details class="settings-details" id="settings-suffix-details">
+              <summary>📖 Suffix- &amp; Ordner-Spickzettel anzeigen</summary>
+              <table class="settings-ref-table suffix-table">
+                <tbody>
+                  <tr><td><code>effekte/</code> (Unterordner) oder <code>_SFX</code></td><td>Eigene One-Shot Effekte im SFX-Pop-up</td></tr>
+                  <tr><td><code>_ACE</code></td><td>Ass / Angriff + Schnellzugriff Ass (Flammen)</td></tr>
+                  <tr><td><code>_HIT</code> / <code>_ANGRIFF</code> / <code>_ASS</code></td><td>Spalte 1: Ass / Angriff</td></tr>
+                  <tr><td><code>_BLOCK</code></td><td>Spalte 2: Block + Schnellzugriff Block (Schild)</td></tr>
+                  <tr><td><code>_OPP</code> / <code>_GEGNER</code></td><td>Spalte 3: Gegner</td></tr>
+                  <tr><td><em>Kein Suffix</em> / <code>_SONSTIGES</code></td><td>Spalten 4–6: Sonstiges (gleichmäßig verteilt)</td></tr>
+                  <tr><td><code>_FUN</code> / <code>_SPASS</code></td><td>Spalte 7: Spaß &amp; Extras</td></tr>
+                  <tr><td><code>_TIMEOUT</code> / <code>_WALKON</code></td><td>Schnellzugriff Timeout / Walk-On</td></tr>
+                  <tr><td><code>_PAUSE1</code>..<code>4</code> / <code>_PAUSE</code></td><td>Pausensongs 1–4 (Satzpausen-Timer)</td></tr>
+                  <tr><td><code>_SIXSEVEN</code> / <code>_67</code></td><td>Schnellzugriff 6 / 7 Hype</td></tr>
+                </tbody>
+              </table>
+              <p class="settings-ref-tip">💡 Tipp: Langes Drücken (Touch) oder Rechtsklick auf einen Song öffnet das Bearbeitungsmenü (⭐ Anpinnen, Kategorie ändern, Lautstärke, Löschen).</p>
+            </details>
+          </section>
+
+          <!-- Section 5: System & Updates -->
           <section class="settings-section">
             <div class="settings-row">
               <div class="settings-row-info">
                 <span class="settings-row-title">App-Version &amp; Update</span>
-                <span class="settings-row-desc">SV 1845 Volleyball DJ · v1.15.0</span>
+                <span class="settings-row-desc">SV 1845 Volleyball DJ · v1.16.0</span>
               </div>
               <button type="button" class="btn-header-tool btn-check-update" id="btn-check-update" title="Nach App-Updates suchen" aria-label="Nach App-Updates suchen">🔄</button>
             </div>
           </section>
 
-          <!-- Section 3: Protected Danger Zone -->
+          <!-- Section 6: Protected Danger Zone -->
           <section class="settings-section settings-danger-zone">
             <div class="settings-danger-title">⚠️ Spieltags-Reset &amp; Mediathek</div>
             <div class="settings-danger-actions">
@@ -637,6 +762,58 @@
               </button>
             </div>
           </section>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Song Context Menu Popup (Long-Press / Right-Click, Native <dialog>) -->
+    <dialog id="track-context-modal" class="app-dialog track-context-dialog" closedby="any" aria-labelledby="track-context-title">
+      <div class="scrubber-card track-context-card">
+        <div class="scrubber-header track-context-header">
+          <div class="scrubber-header-left">
+            <span class="scrubber-badge track-context-badge">SONG-OPTIONEN</span>
+            <h3 class="scrubber-title" id="track-context-title">Song</h3>
+          </div>
+          <button type="button" class="btn-close-scrubber" id="btn-close-track-context" aria-label="Schließen" autofocus>✕</button>
+        </div>
+        <div class="track-context-body">
+          <div class="track-context-meta" id="track-context-meta">Kategorie · 0× gespielt</div>
+          <button type="button" class="btn-header-tool btn-context-pin" id="btn-context-pin" aria-pressed="false">
+            <span id="btn-context-pin-label">⭐ Als Favorit oben anpinnen</span>
+          </button>
+
+          <div class="scrubber-gain-section track-context-gain">
+            <div class="scrubber-gain-header">
+              <label for="context-gain-slider" class="scrubber-gain-label">🎚️ Song-Lautstärke</label>
+              <div class="scrubber-gain-meta">
+                <span class="scrubber-gain-value" id="context-gain-value">100%</span>
+                <button type="button" class="btn-reset-track-gain" id="btn-context-gain-reset" title="Lautstärke auf 100% zurücksetzen">Reset</button>
+              </div>
+            </div>
+            <input type="range" class="scrubber-slider scrubber-gain-slider" id="context-gain-slider" min="20" max="200" value="100" step="5" aria-label="Song-Lautstärke">
+          </div>
+
+          <div class="track-context-cats">
+            <div class="eq-presets-label">📂 Kategorie zuweisen</div>
+            <div class="context-category-grid" id="context-category-grid">
+              <button type="button" class="context-cat-btn" data-target-category="ass_angriff">⚡ Ass / Angriff</button>
+              <button type="button" class="context-cat-btn" data-target-category="block">🛡️ Block</button>
+              <button type="button" class="context-cat-btn" data-target-category="gegner">🛑 Gegner</button>
+              <button type="button" class="context-cat-btn" data-target-category="sonstiges">🎶 Sonstiges</button>
+              <button type="button" class="context-cat-btn" data-target-category="spass_extras">🎉 Spaß &amp; Extras</button>
+              <button type="button" class="context-cat-btn" data-target-category="timeout">⏱ Timeout</button>
+              <button type="button" class="context-cat-btn" data-target-category="walkon">🚶 Walk-On</button>
+              <button type="button" class="context-cat-btn" data-target-category="pause">☕ Pausensong</button>
+              <button type="button" class="context-cat-btn" data-target-category="sixseven">🔥 6 / 7</button>
+              <button type="button" class="context-cat-btn" data-target-category="sfx">📢 Effekt (SFX)</button>
+            </div>
+          </div>
+
+          <div class="track-context-danger">
+            <button type="button" class="btn-header-tool btn-context-delete" id="btn-context-delete">
+              🗑 Diesen Song entfernen
+            </button>
+          </div>
         </div>
       </div>
     </dialog>

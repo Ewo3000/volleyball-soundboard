@@ -9,6 +9,8 @@ import {
   getAllTracks,
   updateTrackPlayCount,
   updateTrackGain,
+  updateTrackMeta,
+  deleteTrack,
   resetAllPlayCounts,
   clearAllTracks,
   saveSetting,
@@ -21,7 +23,8 @@ import {
   cleanTrackTitle,
   detectCategory,
   categorizeTracks,
-  stripExtension
+  stripExtension,
+  isSfxFolderPath
 } from './file-loader.js';
 
 import {
@@ -43,7 +46,16 @@ import {
   THEME_LABELS
 } from './theme.js';
 
-export { initTheme, toggleTheme, setTheme, getCurrentTheme, THEMES, THEME_LABELS, SFX_DEFINITIONS };
+export {
+  initTheme,
+  toggleTheme,
+  setTheme,
+  getCurrentTheme,
+  THEMES,
+  THEME_LABELS,
+  SFX_DEFINITIONS,
+  isSfxFolderPath
+};
 
 // Application State
 export const audioEngine = new AudioEngine();
@@ -58,6 +70,18 @@ export let activeTriggerBtn = null;
 export let isWarmupMode = false;
 export let isStopFading = false;
 export let pauseAutoFadeEnabled = true;
+export let shortcutsEnabled = true;
+export let isScoreboardVisible = false;
+export let contextMenuTrackId = null;
+
+export let scoreboardState = {
+  home: 0,
+  guest: 0,
+  setsHome: 0,
+  setsGuest: 0
+};
+export let scoreUndoStack = [];
+let scoreUndoHighlightTimer = null;
 
 export const TIMEOUT_DURATION_SEC = 30;
 export const PAUSE_DURATION_SEC = 180;
@@ -105,14 +129,17 @@ export function createTrackButtonHtml(track) {
   const count = typeof track.playCount === 'number' ? track.playCount : 0;
   const hasPlayed = count > 0;
   const isHighPlayed = count >= 2;
+  const isPinned = Boolean(track.pinned);
   const playingClass = isPlaying ? ' is-playing playing' : '';
   const playedClass = hasPlayed ? ' has-played' : '';
   const highPlayedClass = isHighPlayed ? ' play-count-high' : '';
+  const pinnedClass = isPinned ? ' is-pinned' : '';
   const playTier = isHighPlayed ? 'high' : hasPlayed ? 'mid' : 'fresh';
   const playingAttr = isPlaying ? ' data-playing="true"' : '';
+  const pinStarHtml = isPinned ? '<span class="pin-star" aria-label="Favorit angepinnt">⭐</span>' : '';
 
-  return `<button type="button" class="song-btn track-btn${playingClass}${playedClass}${highPlayedClass}" data-track-id="${escapeHtml(track.id)}" data-category="${escapeHtml(track.category)}" data-play-tier="${playTier}"${playingAttr} title="${escapeHtml(track.cleanTitle)}">
-    <span class="song-title track-title">${escapeHtml(track.cleanTitle)}</span>
+  return `<button type="button" class="song-btn track-btn${playingClass}${playedClass}${highPlayedClass}${pinnedClass}" data-track-id="${escapeHtml(track.id)}" data-category="${escapeHtml(track.category)}" data-play-tier="${playTier}"${playingAttr} title="${escapeHtml(track.cleanTitle)}">
+    ${pinStarHtml}<span class="song-title track-title">${escapeHtml(track.cleanTitle)}</span>
     <span class="play-badge" data-count="${count}">${count}</span>
   </button>`;
 }
@@ -242,12 +269,42 @@ export function updateStatusBadge() {
 }
 
 /**
+ * Renders imported custom One-Shot SFX tracks (_SFX or effekte/ subfolder) in #sfx-custom-pads-grid
+ */
+export function renderCustomSfxPads() {
+  if (typeof document === 'undefined') return;
+  const grid = document.getElementById('sfx-custom-pads-grid');
+  if (!grid) return;
+
+  const sfxTracks = categorized.get('sfx') || allTracks.filter((t) => t.category === 'sfx');
+  if (sfxTracks.length === 0) {
+    grid.innerHTML =
+      '<div class="sfx-custom-empty">Keine eigenen Effekte geladen — lege MP3/WAV im Unterordner „effekte/“ ab oder nutze „Effekte laden“.</div>';
+    return;
+  }
+
+  grid.innerHTML = sfxTracks
+    .map(
+      (track) => `<div class="sfx-custom-pad-wrap">
+        <button type="button" class="sfx-pad-btn sfx-custom-pad-btn sfx-accent-amber" data-sfx-track-id="${escapeHtml(track.id)}" title="${escapeHtml(track.cleanTitle)}">
+          <span class="sfx-pad-icon" aria-hidden="true">🔊</span>
+          <span class="sfx-pad-name">${escapeHtml(track.cleanTitle)}</span>
+          <span class="sfx-pad-desc">Eigener Effekt</span>
+        </button>
+        <button type="button" class="btn-delete-sfx" data-delete-sfx-id="${escapeHtml(track.id)}" aria-label="${escapeHtml(track.cleanTitle)} entfernen" title="Effekt entfernen">✕</button>
+      </div>`
+    )
+    .join('');
+}
+
+/**
  * Re-renders the entire UI
  */
 export function renderAll() {
   categorized = categorizeTracks(allTracks);
   renderColumns();
   renderDrawer();
+  renderCustomSfxPads();
   updatePauseSlotsUI();
   updateStatusBadge();
 
@@ -762,15 +819,17 @@ export function filterTracks(query) {
  */
 export function applyZoom(val) {
   currentZoom = Math.min(120, Math.max(70, Math.round(val)));
-  const zoomDisplay = document.getElementById('zoom-display');
-  const columnsGrid = document.getElementById('columns-grid');
+  if (typeof document !== 'undefined') {
+    const zoomDisplay = document.getElementById('zoom-display');
+    const columnsGrid = document.getElementById('columns-grid');
 
-  if (zoomDisplay) {
-    zoomDisplay.textContent = `${currentZoom}%`;
-  }
-  if (columnsGrid) {
-    columnsGrid.style.transform = `scale(${currentZoom / 100})`;
-    columnsGrid.style.transformOrigin = 'top center';
+    if (zoomDisplay) {
+      zoomDisplay.textContent = `${currentZoom}%`;
+    }
+    if (columnsGrid) {
+      columnsGrid.style.transform = `scale(${currentZoom / 100})`;
+      columnsGrid.style.transformOrigin = 'top center';
+    }
   }
   saveSetting('zoom', currentZoom).catch((err) => console.warn('Save zoom error:', err));
 }
@@ -958,18 +1017,20 @@ export async function scheduleBackgroundNormalization() {
  */
 export function setHeaderCollapsed(collapsed) {
   isHeaderCollapsed = !!collapsed;
-  const headerBanner = document.getElementById('header-banner');
-  const mainHeader = document.getElementById('main-header');
-  const btnToggleHeader = document.getElementById('btn-toggle-header');
+  if (typeof document !== 'undefined') {
+    const headerBanner = document.getElementById('header-banner');
+    const mainHeader = document.getElementById('main-header');
+    const btnToggleHeader = document.getElementById('btn-toggle-header');
 
-  if (headerBanner) {
-    headerBanner.classList.toggle('collapsed', isHeaderCollapsed);
-  }
-  if (mainHeader) {
-    mainHeader.classList.toggle('collapsed', isHeaderCollapsed);
-  }
-  if (btnToggleHeader) {
-    btnToggleHeader.textContent = isHeaderCollapsed ? 'Kopf ein' : 'Kopf aus';
+    if (headerBanner) {
+      headerBanner.classList.toggle('collapsed', isHeaderCollapsed);
+    }
+    if (mainHeader) {
+      mainHeader.classList.toggle('collapsed', isHeaderCollapsed);
+    }
+    if (btnToggleHeader) {
+      btnToggleHeader.textContent = isHeaderCollapsed ? 'Kopf ein' : 'Kopf aus';
+    }
   }
   saveSetting('headerCollapsed', isHeaderCollapsed).catch((err) => console.warn('Save headerCollapsed error:', err));
 }
@@ -1814,6 +1875,697 @@ export function closeSettingsModal() {
   closeNativeDialog(dialogEl, [trigger]);
 }
 
+/**
+ * #1: Bluetooth Anti-Sleep Keep-Alive Toggle
+ */
+export function applyBluetoothKeepAlive(enabled) {
+  const isEnabled = Boolean(enabled);
+  audioEngine.setBluetoothKeepAlive?.(isEnabled);
+  if (typeof document !== 'undefined') {
+    const btn = document.getElementById('btn-bt-keepalive');
+    const statusEl = document.getElementById('bt-keepalive-status');
+    btn?.classList?.toggle?.('is-active', isEnabled);
+    btn?.setAttribute?.('aria-pressed', String(isEnabled));
+    if (statusEl) statusEl.textContent = isEnabled ? 'EIN' : 'AUS';
+  }
+  saveSetting('btKeepAlive', isEnabled).catch((err) => console.warn('Save btKeepAlive error:', err));
+  return isEnabled;
+}
+
+export function toggleBluetoothKeepAlive() {
+  return applyBluetoothKeepAlive(!audioEngine.getBluetoothKeepAlive?.());
+}
+
+/**
+ * #4: Custom One-Shot SFX Triggers & Direct Import
+ */
+export function triggerCustomSfxTrack(trackId, padBtn = null) {
+  const track = allTracks.find((t) => t.id === trackId);
+  if (!track) return false;
+  if (typeof audioEngine.playOneShotTrack === 'function') {
+    audioEngine.playOneShotTrack(track);
+  }
+  if (padBtn?.classList) {
+    padBtn.classList.remove('is-firing');
+    padBtn.classList.add('is-firing');
+    const timer = setTimeout(() => {
+      padBtn.classList?.remove?.('is-firing');
+    }, 260);
+    if (typeof timer?.unref === 'function') timer.unref();
+  }
+  return true;
+}
+
+export async function processSelectedSfxFiles(fileList) {
+  if (!fileList || fileList.length === 0) return;
+  const newTracks = [];
+  const existingNames = new Set(allTracks.map((t) => (t.name || '').toLowerCase()));
+
+  for (let i = 0; i < fileList.length; i++) {
+    const file = fileList[i];
+    const isAudio =
+      (file.type && file.type.startsWith('audio/')) ||
+      /\.(mp3|wav|ogg|m4a|aac|flac|wma)$/i.test(file.name);
+    if (!isAudio) continue;
+
+    const lowerName = file.name.toLowerCase();
+    if (existingNames.has(lowerName)) continue;
+    existingNames.add(lowerName);
+
+    const track = parseTrackFromFilename(file.name, file, file.type, `effekte/${file.name}`);
+    newTracks.push(track);
+  }
+
+  if (newTracks.length > 0) {
+    await saveTracks(newTracks);
+    allTracks = await getAllTracks();
+    renderAll();
+  }
+}
+
+export async function handleDeleteCustomSfx(trackId) {
+  return deleteSingleTrack(trackId, { skipConfirm: true });
+}
+
+/**
+ * #5: Song Context Menu (Long-Press / Right-Click)
+ */
+const CATEGORY_DEFAULT_SUFFIX = {
+  ass_angriff: '_HIT',
+  block: '_BLOCK',
+  gegner: '_OPP',
+  sonstiges: '',
+  spass_extras: '_FUN',
+  timeout: '_TIMEOUT',
+  walkon: '_WALKON',
+  pause: '_PAUSE',
+  sixseven: '_SIXSEVEN',
+  sfx: '_SFX'
+};
+
+function syncTrackContextModalUI(track) {
+  if (typeof document === 'undefined' || !track) return;
+  const titleEl = document.getElementById('track-context-title');
+  if (titleEl) titleEl.textContent = track.cleanTitle || cleanTrackTitle(track.name || '');
+
+  const metaEl = document.getElementById('track-context-meta');
+  if (metaEl) {
+    const catLabel = CATEGORY_DEFS[track.category]?.label || track.category;
+    const count = typeof track.playCount === 'number' ? track.playCount : 0;
+    metaEl.textContent = `${catLabel} · ${count}× gespielt`;
+  }
+
+  const pinBtn = document.getElementById('btn-context-pin');
+  const pinLabel = document.getElementById('btn-context-pin-label');
+  const isPinned = Boolean(track.pinned);
+  pinBtn?.classList?.toggle?.('is-active', isPinned);
+  pinBtn?.setAttribute?.('aria-pressed', String(isPinned));
+  if (pinLabel) {
+    pinLabel.textContent = isPinned ? '⭐ Angepinnt (Klick zum Loslösen)' : '⭐ Als Favorit oben anpinnen';
+  }
+
+  const gainPct =
+    typeof track.customGain === 'number' && !isNaN(track.customGain)
+      ? Math.round(track.customGain * 100)
+      : 100;
+  const gainSlider = document.getElementById('context-gain-slider');
+  const gainValue = document.getElementById('context-gain-value');
+  if (gainSlider) gainSlider.value = String(gainPct);
+  if (gainValue) gainValue.textContent = `${gainPct}%`;
+
+  const catBtns = document.querySelectorAll?.('.context-cat-btn[data-target-category]');
+  catBtns?.forEach?.((btn) => {
+    const targetCat = btn.getAttribute?.('data-target-category');
+    btn.classList?.toggle?.('is-active', targetCat === track.category);
+  });
+}
+
+export function openTrackContextModal(trackId) {
+  const track = allTracks.find((t) => t.id === trackId);
+  if (!track) return false;
+  contextMenuTrackId = trackId;
+  if (typeof document === 'undefined') return true;
+  syncTrackContextModalUI(track);
+  const dialogEl = document.getElementById('track-context-modal');
+  openNativeDialog(dialogEl, []);
+  return true;
+}
+
+export function closeTrackContextModal() {
+  contextMenuTrackId = null;
+  if (typeof document === 'undefined') return;
+  const dialogEl = document.getElementById('track-context-modal');
+  closeNativeDialog(dialogEl, []);
+}
+
+export async function toggleTrackPinned(trackId = contextMenuTrackId) {
+  const track = allTracks.find((t) => t.id === trackId);
+  if (!track) return false;
+  track.pinned = !track.pinned;
+  await updateTrackMeta(track.id, { pinned: track.pinned }).catch((err) =>
+    console.warn('Failed to update track pinned state:', err)
+  );
+  renderAll();
+  syncTrackContextModalUI(track);
+  return track.pinned;
+}
+
+export async function changeTrackCategory(trackId = contextMenuTrackId, newCategory) {
+  const track = allTracks.find((t) => t.id === trackId);
+  if (!track || !Object.prototype.hasOwnProperty.call(CATEGORY_DEFAULT_SUFFIX, newCategory)) {
+    return false;
+  }
+  const nextSuffix =
+    newCategory === 'ass_angriff' && track.suffix === '_ACE'
+      ? '_ACE'
+      : CATEGORY_DEFAULT_SUFFIX[newCategory];
+  track.category = newCategory;
+  track.suffix = nextSuffix;
+  track.assignedCategory = newCategory === 'sonstiges' ? null : newCategory;
+
+  await updateTrackMeta(track.id, {
+    category: track.category,
+    suffix: track.suffix,
+    assignedCategory: track.assignedCategory
+  }).catch((err) => console.warn('Failed to update track category:', err));
+
+  renderAll();
+  syncTrackContextModalUI(track);
+  return true;
+}
+
+export async function applyContextTrackGain(percentVal, trackId = contextMenuTrackId) {
+  const pct = Math.min(200, Math.max(20, Math.round(Number(percentVal) || 100)));
+  const customGain = Math.round(pct) / 100;
+
+  if (typeof document !== 'undefined') {
+    const slider = document.getElementById('context-gain-slider');
+    const valEl = document.getElementById('context-gain-value');
+    if (slider) slider.value = String(pct);
+    if (valEl) valEl.textContent = `${pct}%`;
+  }
+
+  const track = allTracks.find((t) => t.id === trackId);
+  if (track) {
+    track.customGain = customGain;
+    if (audioEngine.currentTrack?.id === track.id) {
+      audioEngine.currentTrack.customGain = customGain;
+      audioEngine.updateCurrentTrackGain();
+    }
+    await updateTrackGain(track.id, { customGain }).catch((err) =>
+      console.warn('Failed to save context track customGain:', err)
+    );
+  }
+  return customGain;
+}
+
+export async function deleteSingleTrack(trackId = contextMenuTrackId, { skipConfirm = false } = {}) {
+  const idx = allTracks.findIndex((t) => t.id === trackId);
+  if (idx === -1) return false;
+  const track = allTracks[idx];
+
+  if (!skipConfirm && typeof confirm === 'function') {
+    const ok = confirm(`Song „${track.cleanTitle || track.name}“ wirklich aus dem Soundboard entfernen?`);
+    if (!ok) return false;
+  }
+
+  if ((audioEngine.getCurrentTrack?.() || audioEngine.currentTrack)?.id === trackId) {
+    audioEngine.stop(50);
+  }
+  audioEngine.clearSfxCache?.(trackId);
+  await deleteTrack(trackId).catch((err) => console.warn('Failed to delete track:', err));
+
+  const currentIdx = allTracks.findIndex((t) => t.id === trackId);
+  if (currentIdx !== -1) {
+    allTracks.splice(currentIdx, 1);
+  }
+  renderAll();
+  if (contextMenuTrackId === trackId) {
+    closeTrackContextModal();
+  }
+  return true;
+}
+
+/**
+ * #6: Keyboard & NumPad Shortcuts + Media Session API
+ */
+export function applyShortcutsEnabled(enabled) {
+  shortcutsEnabled = Boolean(enabled);
+  if (typeof document !== 'undefined') {
+    const btn = document.getElementById('btn-shortcuts-toggle');
+    const statusEl = document.getElementById('shortcuts-toggle-status');
+    btn?.classList?.toggle?.('is-active', shortcutsEnabled);
+    btn?.setAttribute?.('aria-pressed', String(shortcutsEnabled));
+    if (statusEl) statusEl.textContent = shortcutsEnabled ? 'EIN' : 'AUS';
+  }
+  saveSetting('shortcutsEnabled', shortcutsEnabled).catch((err) =>
+    console.warn('Save shortcutsEnabled error:', err)
+  );
+  return shortcutsEnabled;
+}
+
+export function toggleShortcutsEnabled() {
+  return applyShortcutsEnabled(!shortcutsEnabled);
+}
+
+export function updateMediaSession(track) {
+  if (typeof navigator === 'undefined' || !navigator.mediaSession) return;
+  try {
+    if (track) {
+      if (typeof MediaMetadata === 'function') {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.cleanTitle || track.name || 'Volleyball DJ',
+          artist: 'SV 1845 Esslingen',
+          album: CATEGORY_DEFS[track.category]?.label || 'Soundboard'
+        });
+      }
+      navigator.mediaSession.playbackState = 'playing';
+      navigator.mediaSession.setActionHandler?.('pause', () => stopAudio());
+      navigator.mediaSession.setActionHandler?.('stop', () => stopAudio());
+    } else {
+      navigator.mediaSession.playbackState = 'none';
+    }
+  } catch (_) {}
+}
+
+export function handleGlobalKeydown(e) {
+  if (!shortcutsEnabled || !e) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if (typeof document !== 'undefined') {
+    const activeTag = document.activeElement?.tagName?.toUpperCase?.() || '';
+    if (
+      activeTag === 'INPUT' ||
+      activeTag === 'TEXTAREA' ||
+      activeTag === 'SELECT' ||
+      document.activeElement?.isContentEditable
+    ) {
+      return;
+    }
+
+    const splash = document.getElementById('startup-splash');
+    if (splash && !splash.classList?.contains?.('dismissed') && splash.style?.display !== 'none') {
+      return;
+    }
+
+    const scrubberOpen = document.getElementById('scrubber-modal')?.style?.display === 'flex';
+    const eqOpen = document.getElementById('eq-modal')?.style?.display === 'flex';
+    if (scrubberOpen || eqOpen) {
+      return;
+    }
+
+    const openDialog = document.querySelector?.('dialog[open]');
+    const keyLower = (e.key || '').toLowerCase();
+    if (openDialog) {
+      if (openDialog.id === 'sfx-modal' && keyLower === 's') {
+        e.preventDefault?.();
+        closeSfxModal();
+      }
+      return;
+    }
+  }
+
+  const key = (e.key || '').toLowerCase();
+  switch (key) {
+    case ' ':
+      e.preventDefault?.();
+      stopAudio();
+      return true;
+    case 'a':
+      e.preventDefault?.();
+      playAce();
+      return true;
+    case 'b':
+      e.preventDefault?.();
+      playBlock();
+      return true;
+    case 'e':
+      e.preventDefault?.();
+      playRandomOwn();
+      return true;
+    case 'g':
+      e.preventDefault?.();
+      playRandomOpponent();
+      return true;
+    case 't':
+      e.preventDefault?.();
+      playTimeout();
+      return true;
+    case 'w':
+      e.preventDefault?.();
+      playWalkOn();
+      return true;
+    case '6':
+    case '7':
+      e.preventDefault?.();
+      playSixSeven();
+      return true;
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+      e.preventDefault?.();
+      playPauseSlot(Number(key));
+      return true;
+    case 's':
+      e.preventDefault?.();
+      openSfxModal();
+      return true;
+    case 'u':
+      e.preventDefault?.();
+      toggleWarmupMode();
+      return true;
+    case 'arrowup':
+      e.preventDefault?.();
+      applyVolume(Math.round(audioEngine.getMasterVolume() * 100) + 5);
+      return true;
+    case 'arrowdown':
+      e.preventDefault?.();
+      applyVolume(Math.round(audioEngine.getMasterVolume() * 100) - 5);
+      return true;
+    case '/': {
+      e.preventDefault?.();
+      const searchEl = typeof document !== 'undefined' ? document.getElementById('search-input') : null;
+      searchEl?.focus?.();
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
+/**
+ * #7: JSON Settings & Track Metadata Backup (Export / Import)
+ */
+export function buildSettingsBackupPayload() {
+  const tracksMeta = {};
+  for (const t of allTracks) {
+    if (!t?.name) continue;
+    const key = t.name.toLowerCase();
+    const meta = {};
+    if (typeof t.customGain === 'number' && !isNaN(t.customGain)) meta.customGain = t.customGain;
+    if (t.pinned) meta.pinned = true;
+    if (t.category) meta.category = t.category;
+    if (t.suffix) meta.suffix = t.suffix;
+    if (t.cleanTitle) meta.cleanTitle = t.cleanTitle;
+    tracksMeta[key] = meta;
+  }
+
+  return {
+    app: 'sv1845-volleyball-dj',
+    version: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    settings: {
+      volume: Math.round(audioEngine.getMasterVolume() * 100),
+      sfxVolume: Math.round((audioEngine.getSfxVolume?.() ?? 0.9) * 100),
+      autoNormalize: audioEngine.getAutoNormalize(),
+      eqPreset: audioEngine.getEqPreset(),
+      zoom: currentZoom,
+      headerCollapsed: isHeaderCollapsed,
+      theme: getCurrentTheme(),
+      btKeepAlive: Boolean(audioEngine.getBluetoothKeepAlive?.()),
+      shortcutsEnabled,
+      pauseAutoFade: pauseAutoFadeEnabled,
+      scoreboardVisible: isScoreboardVisible
+    },
+    tracksMeta
+  };
+}
+
+export function exportSettingsBackup() {
+  const payload = buildSettingsBackupPayload();
+  const jsonStr = JSON.stringify(payload, null, 2);
+
+  if (
+    typeof document !== 'undefined' &&
+    typeof Blob !== 'undefined' &&
+    typeof URL !== 'undefined' &&
+    typeof URL.createObjectURL === 'function'
+  ) {
+    try {
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `sv1845-soundboard-backup-${dateStr}.json`;
+      document.body?.appendChild?.(a);
+      a.click?.();
+      a.remove?.();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.warn('Could not trigger backup download:', err);
+    }
+  }
+
+  return jsonStr;
+}
+
+export async function importSettingsBackup(jsonInput) {
+  let data = jsonInput;
+  if (typeof jsonInput === 'string') {
+    data = JSON.parse(jsonInput);
+  }
+  if (!data || typeof data !== 'object') {
+    throw new Error('Ungültiges Backup-Format');
+  }
+
+  let appliedSettings = 0;
+  const s = data.settings;
+  if (s && typeof s === 'object') {
+    if (typeof s.volume === 'number') { applyVolume(s.volume); appliedSettings++; }
+    if (typeof s.sfxVolume === 'number') { applySfxVolume(s.sfxVolume); appliedSettings++; }
+    if (typeof s.autoNormalize === 'boolean') { applyAutoNormalize(s.autoNormalize); appliedSettings++; }
+    if (typeof s.eqPreset === 'string') { applyEqPreset(s.eqPreset); appliedSettings++; }
+    if (typeof s.zoom === 'number') { applyZoom(s.zoom); appliedSettings++; }
+    if (typeof s.headerCollapsed === 'boolean') { setHeaderCollapsed(s.headerCollapsed); appliedSettings++; }
+    if (typeof s.theme === 'string') { setTheme(s.theme); appliedSettings++; }
+    if (typeof s.btKeepAlive === 'boolean') { applyBluetoothKeepAlive(s.btKeepAlive); appliedSettings++; }
+    if (typeof s.shortcutsEnabled === 'boolean') { applyShortcutsEnabled(s.shortcutsEnabled); appliedSettings++; }
+    if (typeof s.pauseAutoFade === 'boolean') { setPauseAutoFade(s.pauseAutoFade); appliedSettings++; }
+    if (typeof s.scoreboardVisible === 'boolean') { setScoreboardVisible(s.scoreboardVisible); appliedSettings++; }
+  }
+
+  let updatedTracks = 0;
+  const metaMap = data.tracksMeta;
+  if (metaMap && typeof metaMap === 'object') {
+    for (const track of allTracks) {
+      const entry = metaMap[(track.name || '').toLowerCase()];
+      if (!entry || typeof entry !== 'object') continue;
+      const updates = {};
+      if (typeof entry.customGain === 'number' && !isNaN(entry.customGain)) {
+        updates.customGain = entry.customGain;
+        track.customGain = entry.customGain;
+      }
+      if (typeof entry.pinned === 'boolean') {
+        updates.pinned = entry.pinned;
+        track.pinned = entry.pinned;
+      }
+      if (typeof entry.category === 'string' && Object.prototype.hasOwnProperty.call(CATEGORY_DEFAULT_SUFFIX, entry.category)) {
+        updates.category = entry.category;
+        updates.suffix = typeof entry.suffix === 'string' ? entry.suffix : CATEGORY_DEFAULT_SUFFIX[entry.category];
+        updates.assignedCategory = entry.category === 'sonstiges' ? null : entry.category;
+        track.category = updates.category;
+        track.suffix = updates.suffix;
+        track.assignedCategory = updates.assignedCategory;
+      }
+      if (typeof entry.cleanTitle === 'string' && entry.cleanTitle.trim()) {
+        updates.cleanTitle = entry.cleanTitle.trim();
+        track.cleanTitle = updates.cleanTitle;
+      }
+      if (Object.keys(updates).length > 0) {
+        await updateTrackMeta(track.id, updates).catch(() => {});
+        updatedTracks++;
+      }
+    }
+    if (updatedTracks > 0) {
+      renderAll();
+    }
+  }
+
+  return { appliedSettings, updatedTracks };
+}
+
+/**
+ * #12: Optional Header Mini Scoreboard with Quick Undo Correction & Crunch-Time Detection
+ */
+export function getScoreboardCrunchStatus(state = scoreboardState) {
+  const home = Math.max(0, Number(state?.home) || 0);
+  const guest = Math.max(0, Number(state?.guest) || 0);
+  const setsHome = Math.max(0, Number(state?.setsHome) || 0);
+  const setsGuest = Math.max(0, Number(state?.setsGuest) || 0);
+
+  // Best-of-5 volleyball: 5th set (4 sets already finished) is Tie-Break to 15 (set point at 14)
+  const isTieBreak = setsHome + setsGuest >= 4;
+  const setPointAt = isTieBreak ? 14 : 24;
+
+  if (home < setPointAt && guest < setPointAt) {
+    return { isCrunch: false, label: '' };
+  }
+  if (home === guest) {
+    return { isCrunch: true, label: 'DEUCE' };
+  }
+
+  const leaderHasTwoSets = home > guest ? setsHome >= 2 : setsGuest >= 2;
+  return {
+    isCrunch: true,
+    label: leaderHasTwoSets ? 'MATCHBALL' : 'SATZBALL'
+  };
+}
+
+function pushScoreUndoSnapshot() {
+  scoreUndoStack.push({ ...scoreboardState });
+  if (scoreUndoStack.length > 15) {
+    scoreUndoStack.shift();
+  }
+}
+
+function triggerUndoHighlight() {
+  if (typeof document === 'undefined') return;
+  const undoBtn = document.getElementById('btn-score-undo');
+  if (!undoBtn) return;
+  undoBtn.classList?.remove?.('is-recent');
+  undoBtn.classList?.add?.('is-recent');
+  if (scoreUndoHighlightTimer) clearTimeout(scoreUndoHighlightTimer);
+  scoreUndoHighlightTimer = setTimeout(() => {
+    scoreUndoHighlightTimer = null;
+    undoBtn.classList?.remove?.('is-recent');
+  }, 8000);
+  if (typeof scoreUndoHighlightTimer?.unref === 'function') {
+    scoreUndoHighlightTimer.unref();
+  }
+}
+
+export function renderScoreboardUI() {
+  if (typeof document === 'undefined') return;
+  const sbEl = document.getElementById('header-scoreboard');
+  const toggleBtn = document.getElementById('btn-scoreboard-toggle');
+  const statusEl = document.getElementById('scoreboard-toggle-status');
+
+  if (sbEl && sbEl.style) {
+    sbEl.style.display = isScoreboardVisible ? 'inline-flex' : 'none';
+  }
+  toggleBtn?.classList?.toggle?.('is-active', isScoreboardVisible);
+  toggleBtn?.setAttribute?.('aria-pressed', String(isScoreboardVisible));
+  if (statusEl) statusEl.textContent = isScoreboardVisible ? 'EIN' : 'AUS';
+
+  const homeVal = document.getElementById('score-home-val');
+  const guestVal = document.getElementById('score-guest-val');
+  const setsBadge = document.getElementById('score-sets-badge');
+  const crunchBadge = document.getElementById('score-crunch-badge');
+  const undoBtn = document.getElementById('btn-score-undo');
+  const boardContainer = document.getElementById('board-container');
+
+  if (homeVal) homeVal.textContent = String(scoreboardState.home);
+  if (guestVal) guestVal.textContent = String(scoreboardState.guest);
+  if (setsBadge) setsBadge.textContent = `${scoreboardState.setsHome}:${scoreboardState.setsGuest}`;
+
+  if (undoBtn) {
+    undoBtn.disabled = scoreUndoStack.length === 0;
+  }
+
+  const crunch = getScoreboardCrunchStatus(scoreboardState);
+  sbEl?.classList?.toggle?.('is-crunch-time', crunch.isCrunch);
+  boardContainer?.classList?.toggle?.('is-crunch-time', isScoreboardVisible && crunch.isCrunch);
+
+  if (crunchBadge) {
+    crunchBadge.textContent = crunch.label;
+    if (crunchBadge.style) {
+      crunchBadge.style.display = crunch.isCrunch ? 'inline-block' : 'none';
+    }
+  }
+}
+
+function persistScoreboardState() {
+  saveSetting('scoreboardState', { ...scoreboardState }).catch((err) =>
+    console.warn('Save scoreboardState error:', err)
+  );
+}
+
+export function setScoreboardVisible(visible) {
+  isScoreboardVisible = Boolean(visible);
+  renderScoreboardUI();
+  saveSetting('scoreboardVisible', isScoreboardVisible).catch((err) =>
+    console.warn('Save scoreboardVisible error:', err)
+  );
+  return isScoreboardVisible;
+}
+
+export function toggleScoreboardVisible() {
+  return setScoreboardVisible(!isScoreboardVisible);
+}
+
+export function adjustScore(side, delta = 1) {
+  const key = side === 'guest' ? 'guest' : 'home';
+  const nextVal = Math.max(0, (Number(scoreboardState[key]) || 0) + Number(delta || 0));
+  if (nextVal === scoreboardState[key]) return { ...scoreboardState };
+
+  pushScoreUndoSnapshot();
+  scoreboardState[key] = nextVal;
+  renderScoreboardUI();
+  if (delta > 0) {
+    triggerUndoHighlight();
+  }
+  persistScoreboardState();
+  return { ...scoreboardState };
+}
+
+export function undoLastScoreAction() {
+  if (scoreUndoStack.length === 0) return false;
+  const previous = scoreUndoStack.pop();
+  scoreboardState = {
+    home: Math.max(0, Number(previous.home) || 0),
+    guest: Math.max(0, Number(previous.guest) || 0),
+    setsHome: Math.max(0, Number(previous.setsHome) || 0),
+    setsGuest: Math.max(0, Number(previous.setsGuest) || 0)
+  };
+  if (scoreUndoHighlightTimer) {
+    clearTimeout(scoreUndoHighlightTimer);
+    scoreUndoHighlightTimer = null;
+  }
+  if (typeof document !== 'undefined') {
+    document.getElementById('btn-score-undo')?.classList?.remove?.('is-recent');
+  }
+  renderScoreboardUI();
+  persistScoreboardState();
+  return true;
+}
+
+export function finishCurrentSet() {
+  if (scoreboardState.home === 0 && scoreboardState.guest === 0) {
+    return { ...scoreboardState };
+  }
+  pushScoreUndoSnapshot();
+  if (scoreboardState.home > scoreboardState.guest) {
+    scoreboardState.setsHome += 1;
+  } else if (scoreboardState.guest > scoreboardState.home) {
+    scoreboardState.setsGuest += 1;
+  }
+  scoreboardState.home = 0;
+  scoreboardState.guest = 0;
+  renderScoreboardUI();
+  triggerUndoHighlight();
+  persistScoreboardState();
+  return { ...scoreboardState };
+}
+
+export function resetScoreboard() {
+  if (
+    scoreboardState.home === 0 &&
+    scoreboardState.guest === 0 &&
+    scoreboardState.setsHome === 0 &&
+    scoreboardState.setsGuest === 0
+  ) {
+    return { ...scoreboardState };
+  }
+  pushScoreUndoSnapshot();
+  scoreboardState = { home: 0, guest: 0, setsHome: 0, setsGuest: 0 };
+  renderScoreboardUI();
+  triggerUndoHighlight();
+  persistScoreboardState();
+  return { ...scoreboardState };
+}
+
 export async function handleClearAll() {
   const confirmed = typeof confirm === 'function'
     ? confirm('Möchtest du wirklich alle Songs aus der Liste entfernen?')
@@ -1821,6 +2573,7 @@ export async function handleClearAll() {
   if (!confirmed) return;
 
   await clearAllTracks();
+  audioEngine.clearSfxCache?.();
   allTracks = [];
   renderAll();
   if (typeof document !== 'undefined') {
@@ -1828,7 +2581,7 @@ export async function handleClearAll() {
   }
 }
 
-export const APP_VERSION = '1.15.0';
+export const APP_VERSION = '1.16.0';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -1951,7 +2704,7 @@ export async function processSelectedFiles(fileList) {
     }
     existingNames.add(lowerName);
 
-    const track = parseTrackFromFilename(file.name, file, file.type);
+    const track = parseTrackFromFilename(file.name, file, file.type, file.webkitRelativePath || '');
     newTracks.push(track);
   }
 
@@ -2006,6 +2759,7 @@ export function setupEventListeners() {
     resetStopFadeState();
     updatePlayingUI(track ? track.id : null);
     updateNowPlayingHeader(track);
+    updateMediaSession(track);
     startProgressLoop();
     startVisualizerLoop();
     const isPause =
@@ -2022,6 +2776,7 @@ export function setupEventListeners() {
     stopVisualizerLoop();
     updatePlayingUI(null);
     updateNowPlayingHeader(null);
+    updateMediaSession(null);
     hidePauseOverlay();
     clearActiveTriggerButton();
     closeScrubberModal();
@@ -2031,6 +2786,7 @@ export function setupEventListeners() {
     stopVisualizerLoop();
     updatePlayingUI(null);
     updateNowPlayingHeader(null);
+    updateMediaSession(null);
     hidePauseOverlay();
     clearActiveTriggerButton();
     closeScrubberModal();
@@ -2293,10 +3049,79 @@ export function setupEventListeners() {
   };
 
   // Track button click delegation for scrollable song lists (board and drawer)
-  // Uses native click without e.preventDefault() so touch scrolling/gestures are not blocked on mobile
+  // Uses native click + passive touch long-press + contextmenu (never pointerdown, so native touch scrolling is preserved)
   const setupSongListDelegation = (container) => {
     if (!container || typeof container.addEventListener !== 'function') return;
+    let longPressTimer = null;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let suppressNextClickUntil = 0;
+
+    const cancelLongPress = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+
+    container.addEventListener(
+      'touchstart',
+      (e) => {
+        const btn = e?.target?.closest?.('.song-btn, .track-btn');
+        if (!btn) return;
+        const trackId = btn.getAttribute('data-track-id');
+        if (!trackId) return;
+        const touch = e.touches?.[0];
+        touchStartX = touch?.clientX || 0;
+        touchStartY = touch?.clientY || 0;
+        cancelLongPress();
+        longPressTimer = setTimeout(() => {
+          longPressTimer = null;
+          suppressNextClickUntil = Date.now() + 650;
+          try {
+            navigator?.vibrate?.(25);
+          } catch (_) {}
+          openTrackContextModal(trackId);
+        }, 500);
+        if (typeof longPressTimer?.unref === 'function') longPressTimer.unref();
+      },
+      { passive: true }
+    );
+
+    container.addEventListener(
+      'touchmove',
+      (e) => {
+        if (!longPressTimer) return;
+        const touch = e.touches?.[0];
+        if (!touch) return;
+        const dx = Math.abs((touch.clientX || 0) - touchStartX);
+        const dy = Math.abs((touch.clientY || 0) - touchStartY);
+        if (dx > 10 || dy > 10) {
+          cancelLongPress();
+        }
+      },
+      { passive: true }
+    );
+
+    container.addEventListener('touchend', cancelLongPress, { passive: true });
+    container.addEventListener('touchcancel', cancelLongPress, { passive: true });
+
+    container.addEventListener('contextmenu', (e) => {
+      const btn = e?.target?.closest?.('.song-btn, .track-btn');
+      if (!btn) return;
+      e.preventDefault?.();
+      cancelLongPress();
+      const trackId = btn.getAttribute('data-track-id');
+      if (trackId) {
+        openTrackContextModal(trackId);
+      }
+    });
+
     container.addEventListener('click', (e) => {
+      if (Date.now() < suppressNextClickUntil) {
+        e.preventDefault?.();
+        return;
+      }
       const btn = e?.target?.closest?.('.song-btn, .track-btn');
       if (!btn) return;
       const trackId = btn.getAttribute('data-track-id');
@@ -2554,6 +3379,48 @@ export function setupEventListeners() {
     sfxVolumeSlider.addEventListener('input', (e) => applySfxVolume(e.target.value));
   }
 
+  // Custom SFX files import & pad activation (#4)
+  const btnLoadSfxFiles = document.getElementById('btn-load-sfx-files');
+  const fileSfxInput = document.getElementById('file-sfx-input');
+  if (btnLoadSfxFiles && fileSfxInput && typeof btnLoadSfxFiles.addEventListener === 'function') {
+    btnLoadSfxFiles.addEventListener('click', () => fileSfxInput.click());
+  }
+  if (fileSfxInput && typeof fileSfxInput.addEventListener === 'function') {
+    fileSfxInput.addEventListener('change', async (e) => {
+      await processSelectedSfxFiles(e.target.files);
+      fileSfxInput.value = '';
+    });
+  }
+  const sfxCustomGrid = document.getElementById('sfx-custom-pads-grid');
+  if (sfxCustomGrid && typeof sfxCustomGrid.addEventListener === 'function') {
+    let lastCustomPadDown = 0;
+    const handleCustomSfxActivate = (e) => {
+      const delBtn = e?.target?.closest?.('.btn-delete-sfx');
+      if (delBtn) {
+        if (e.type === 'click') {
+          const delId = delBtn.getAttribute('data-delete-sfx-id');
+          if (delId) handleDeleteCustomSfx(delId);
+        }
+        return;
+      }
+      const btn = e?.target?.closest?.('.sfx-custom-pad-btn');
+      if (!btn) return;
+      const now = Date.now();
+      if (e.type === 'pointerdown') {
+        lastCustomPadDown = now;
+        e.preventDefault?.();
+        const trackId = btn.getAttribute('data-sfx-track-id');
+        if (trackId) triggerCustomSfxTrack(trackId, btn);
+        return;
+      }
+      if (now - lastCustomPadDown < 450) return;
+      const trackId = btn.getAttribute('data-sfx-track-id');
+      if (trackId) triggerCustomSfxTrack(trackId, btn);
+    };
+    sfxCustomGrid.addEventListener('pointerdown', handleCustomSfxActivate);
+    sfxCustomGrid.addEventListener('click', handleCustomSfxActivate);
+  }
+
   // Settings & Maintenance Popup (<dialog id="settings-modal">)
   const btnSettingsMenu = document.getElementById('btn-settings-menu');
   if (btnSettingsMenu && typeof btnSettingsMenu.addEventListener === 'function') {
@@ -2579,6 +3446,119 @@ export function setupEventListeners() {
     });
   }
 
+  // Settings toggles (#1 BT Keep-Alive, #12 Scoreboard, #6 Shortcuts) & Backup (#7)
+  const btnBtKeepAlive = document.getElementById('btn-bt-keepalive');
+  if (btnBtKeepAlive && typeof btnBtKeepAlive.addEventListener === 'function') {
+    btnBtKeepAlive.addEventListener('click', () => toggleBluetoothKeepAlive());
+  }
+  const btnScoreboardToggle = document.getElementById('btn-scoreboard-toggle');
+  if (btnScoreboardToggle && typeof btnScoreboardToggle.addEventListener === 'function') {
+    btnScoreboardToggle.addEventListener('click', () => toggleScoreboardVisible());
+  }
+  const btnShortcutsToggle = document.getElementById('btn-shortcuts-toggle');
+  if (btnShortcutsToggle && typeof btnShortcutsToggle.addEventListener === 'function') {
+    btnShortcutsToggle.addEventListener('click', () => toggleShortcutsEnabled());
+  }
+
+  const btnExportSettings = document.getElementById('btn-export-settings');
+  if (btnExportSettings && typeof btnExportSettings.addEventListener === 'function') {
+    btnExportSettings.addEventListener('click', () => exportSettingsBackup());
+  }
+  const btnImportSettings = document.getElementById('btn-import-settings');
+  const fileImportSettings = document.getElementById('file-import-settings');
+  if (btnImportSettings && fileImportSettings && typeof btnImportSettings.addEventListener === 'function') {
+    btnImportSettings.addEventListener('click', () => fileImportSettings.click());
+  }
+  if (fileImportSettings && typeof fileImportSettings.addEventListener === 'function') {
+    fileImportSettings.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        try {
+          const text = await file.text();
+          const res = await importSettingsBackup(text);
+          if (typeof alert === 'function') {
+            alert(`Backup geladen: ${res.appliedSettings} Einstellungen & ${res.updatedTracks} Song-Zuordnungen übernommen.`);
+          }
+        } catch (err) {
+          if (typeof alert === 'function') {
+            alert('Backup konnte nicht geladen werden: ' + (err.message || err));
+          }
+        }
+        fileImportSettings.value = '';
+      }
+    });
+  }
+
+  // Header Mini Scoreboard listeners (#12)
+  const btnScoreHomePlus = document.getElementById('btn-score-home-plus');
+  if (btnScoreHomePlus && typeof btnScoreHomePlus.addEventListener === 'function') {
+    btnScoreHomePlus.addEventListener('click', () => adjustScore('home', 1));
+  }
+  const btnScoreHomeMinus = document.getElementById('btn-score-home-minus');
+  if (btnScoreHomeMinus && typeof btnScoreHomeMinus.addEventListener === 'function') {
+    btnScoreHomeMinus.addEventListener('click', () => adjustScore('home', -1));
+  }
+  const btnScoreGuestPlus = document.getElementById('btn-score-guest-plus');
+  if (btnScoreGuestPlus && typeof btnScoreGuestPlus.addEventListener === 'function') {
+    btnScoreGuestPlus.addEventListener('click', () => adjustScore('guest', 1));
+  }
+  const btnScoreGuestMinus = document.getElementById('btn-score-guest-minus');
+  if (btnScoreGuestMinus && typeof btnScoreGuestMinus.addEventListener === 'function') {
+    btnScoreGuestMinus.addEventListener('click', () => adjustScore('guest', -1));
+  }
+  const btnScoreUndo = document.getElementById('btn-score-undo');
+  if (btnScoreUndo && typeof btnScoreUndo.addEventListener === 'function') {
+    btnScoreUndo.addEventListener('click', () => undoLastScoreAction());
+  }
+  const btnScoreNextSet = document.getElementById('btn-score-next-set');
+  if (btnScoreNextSet && typeof btnScoreNextSet.addEventListener === 'function') {
+    btnScoreNextSet.addEventListener('click', () => finishCurrentSet());
+  }
+  const btnScoreReset = document.getElementById('btn-score-reset');
+  if (btnScoreReset && typeof btnScoreReset.addEventListener === 'function') {
+    btnScoreReset.addEventListener('click', () => resetScoreboard());
+  }
+
+  // Song Context Menu (<dialog id="track-context-modal">, #5)
+  const trackContextModal = document.getElementById('track-context-modal');
+  if (trackContextModal && typeof trackContextModal.addEventListener === 'function') {
+    setupDialogLightDismiss(trackContextModal);
+    trackContextModal.addEventListener('close', () => {
+      trackContextModal.returnValue = '';
+      contextMenuTrackId = null;
+    });
+  }
+  const btnCloseTrackContext = document.getElementById('btn-close-track-context');
+  if (btnCloseTrackContext && typeof btnCloseTrackContext.addEventListener === 'function') {
+    btnCloseTrackContext.addEventListener('click', () => closeTrackContextModal());
+  }
+  const btnContextPin = document.getElementById('btn-context-pin');
+  if (btnContextPin && typeof btnContextPin.addEventListener === 'function') {
+    btnContextPin.addEventListener('click', () => toggleTrackPinned());
+  }
+  const contextGainSlider = document.getElementById('context-gain-slider');
+  if (contextGainSlider && typeof contextGainSlider.addEventListener === 'function') {
+    contextGainSlider.addEventListener('input', (e) => applyContextTrackGain(e.target.value));
+  }
+  const btnContextGainReset = document.getElementById('btn-context-gain-reset');
+  if (btnContextGainReset && typeof btnContextGainReset.addEventListener === 'function') {
+    btnContextGainReset.addEventListener('click', () => applyContextTrackGain(100));
+  }
+  const contextCategoryGrid = document.getElementById('context-category-grid');
+  if (contextCategoryGrid && typeof contextCategoryGrid.addEventListener === 'function') {
+    contextCategoryGrid.addEventListener('click', (e) => {
+      const catBtn = e?.target?.closest?.('.context-cat-btn[data-target-category]');
+      if (catBtn) {
+        const targetCat = catBtn.getAttribute('data-target-category');
+        if (targetCat) changeTrackCategory(contextMenuTrackId, targetCat);
+      }
+    });
+  }
+  const btnContextDelete = document.getElementById('btn-context-delete');
+  if (btnContextDelete && typeof btnContextDelete.addEventListener === 'function') {
+    btnContextDelete.addEventListener('click', () => deleteSingleTrack());
+  }
+
   const btnCloseScrubber = document.getElementById('btn-close-scrubber');
   if (btnCloseScrubber && typeof btnCloseScrubber.addEventListener === 'function') {
     btnCloseScrubber.addEventListener('click', () => closeScrubberModal());
@@ -2594,7 +3574,9 @@ export function setupEventListeners() {
       if (e.key === 'Escape') {
         closeScrubberModal();
         closeEqModal();
+        return;
       }
+      handleGlobalKeydown(e);
     });
   }
 
@@ -2778,6 +3760,24 @@ export async function initApp() {
 
     const savedHeaderCollapsed = await getSetting('headerCollapsed', false);
     setHeaderCollapsed(savedHeaderCollapsed);
+
+    const savedBtKeepAlive = await getSetting('btKeepAlive', false);
+    applyBluetoothKeepAlive(savedBtKeepAlive);
+
+    const savedShortcuts = await getSetting('shortcutsEnabled', true);
+    applyShortcutsEnabled(savedShortcuts);
+
+    const savedScoreboardState = await getSetting('scoreboardState', null);
+    if (savedScoreboardState && typeof savedScoreboardState === 'object') {
+      scoreboardState = {
+        home: Math.max(0, Number(savedScoreboardState.home) || 0),
+        guest: Math.max(0, Number(savedScoreboardState.guest) || 0),
+        setsHome: Math.max(0, Number(savedScoreboardState.setsHome) || 0),
+        setsGuest: Math.max(0, Number(savedScoreboardState.setsGuest) || 0)
+      };
+    }
+    const savedScoreboardVisible = await getSetting('scoreboardVisible', false);
+    setScoreboardVisible(savedScoreboardVisible);
 
     // Initialize Theme (classic by default or loaded from localStorage)
     initTheme();

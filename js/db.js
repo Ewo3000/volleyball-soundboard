@@ -46,6 +46,27 @@ export class MemoryStorageEngine {
     }
   }
 
+  async updateTrackMeta(id, updates = {}) {
+    const t = this.tracks.get(id);
+    if (t && updates && typeof updates === 'object') {
+      if (typeof updates.category === 'string') t.category = updates.category;
+      if (typeof updates.assignedCategory === 'string' || updates.assignedCategory === null) {
+        t.assignedCategory = updates.assignedCategory;
+      }
+      if (typeof updates.suffix === 'string') t.suffix = updates.suffix;
+      if (typeof updates.pinned === 'boolean') t.pinned = updates.pinned;
+      if (typeof updates.cleanTitle === 'string') t.cleanTitle = updates.cleanTitle;
+      if (typeof updates.customGain === 'number') t.customGain = updates.customGain;
+      if (typeof updates.normGain === 'number') t.normGain = updates.normGain;
+      if (typeof updates.normVersion === 'number') t.normVersion = updates.normVersion;
+      this.tracks.set(id, t);
+    }
+  }
+
+  async deleteTrack(id) {
+    this.tracks.delete(id);
+  }
+
   async resetAllPlayCounts() {
     for (const [id, t] of this.tracks.entries()) {
       t.playCount = 0;
@@ -176,6 +197,46 @@ export class IndexedDBStorageEngine {
     });
   }
 
+  async updateTrackMeta(id, updates = {}) {
+    this._ensureDB();
+    const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
+    const store = tx.objectStore(TRACKS_STORE);
+    const getReq = store.get(id);
+
+    return new Promise((resolve, reject) => {
+      getReq.onsuccess = () => {
+        const track = getReq.result;
+        if (track && updates && typeof updates === 'object') {
+          if (typeof updates.category === 'string') track.category = updates.category;
+          if (typeof updates.assignedCategory === 'string' || updates.assignedCategory === null) {
+            track.assignedCategory = updates.assignedCategory;
+          }
+          if (typeof updates.suffix === 'string') track.suffix = updates.suffix;
+          if (typeof updates.pinned === 'boolean') track.pinned = updates.pinned;
+          if (typeof updates.cleanTitle === 'string') track.cleanTitle = updates.cleanTitle;
+          if (typeof updates.customGain === 'number') track.customGain = updates.customGain;
+          if (typeof updates.normGain === 'number') track.normGain = updates.normGain;
+          if (typeof updates.normVersion === 'number') track.normVersion = updates.normVersion;
+          store.put(track);
+        }
+      };
+      getReq.onerror = () => reject(getReq.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async deleteTrack(id) {
+    this._ensureDB();
+    const tx = this.db.transaction([TRACKS_STORE], 'readwrite');
+    const store = tx.objectStore(TRACKS_STORE);
+    store.delete(id);
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   async resetAllPlayCounts() {
     this._ensureDB();
     const tracks = await this.getAllTracks();
@@ -274,6 +335,16 @@ export async function updateTrackPlayCount(id, playCount) {
 export async function updateTrackGain(id, gainUpdates) {
   const engine = getDefaultStorage();
   return engine.updateTrackGain(id, gainUpdates);
+}
+
+export async function updateTrackMeta(id, updates) {
+  const engine = getDefaultStorage();
+  return engine.updateTrackMeta(id, updates);
+}
+
+export async function deleteTrack(id) {
+  const engine = getDefaultStorage();
+  return engine.deleteTrack(id);
 }
 
 export async function resetAllPlayCounts() {

@@ -156,6 +156,10 @@ export class AudioEngine {
     this.analyser = null;
     this._analyserData = null;
     this._fadingChains = new Set();
+    this._sfxBufferCache = new Map();
+    this.btKeepAlive = false;
+    this._keepAliveOsc = null;
+    this._keepAliveGain = null;
     this.currentSource = null;
     this.currentTrackGain = null;
     this.currentAudioElement = null;
@@ -248,6 +252,10 @@ export class AudioEngine {
         res.catch(() => {});
       }
     }
+
+    if (this.btKeepAlive) {
+      this._startKeepAlive();
+    }
   }
 
   _applyEqFilterGains() {
@@ -321,6 +329,23 @@ export class AudioEngine {
     }
   }
 
+  async _extractTrackArrayBuffer(track) {
+    if (!track || !track.blob) return null;
+    if (typeof ArrayBuffer !== 'undefined' && track.blob instanceof ArrayBuffer) {
+      return track.blob.slice(0);
+    }
+    if (typeof Uint8Array !== 'undefined' && track.blob instanceof Uint8Array) {
+      return track.blob.buffer.slice(
+        track.blob.byteOffset,
+        track.blob.byteOffset + track.blob.byteLength
+      );
+    }
+    if (typeof track.blob.arrayBuffer === 'function') {
+      return track.blob.arrayBuffer();
+    }
+    return null;
+  }
+
   async analyzeTrackLoudness(track) {
     if (!track) return 1.0;
     if (
@@ -336,18 +361,7 @@ export class AudioEngine {
       return 1.0;
     }
 
-    let arrayBuffer = null;
-    if (typeof ArrayBuffer !== 'undefined' && track.blob instanceof ArrayBuffer) {
-      arrayBuffer = track.blob.slice(0);
-    } else if (typeof Uint8Array !== 'undefined' && track.blob instanceof Uint8Array) {
-      arrayBuffer = track.blob.buffer.slice(
-        track.blob.byteOffset,
-        track.blob.byteOffset + track.blob.byteLength
-      );
-    } else if (track.blob && typeof track.blob.arrayBuffer === 'function') {
-      arrayBuffer = await track.blob.arrayBuffer();
-    }
-
+    const arrayBuffer = await this._extractTrackArrayBuffer(track);
     if (!arrayBuffer) return 1.0;
 
     try {
@@ -709,6 +723,173 @@ export class AudioEngine {
     const targetNode = this.compressor || this.masterGain || this.audioCtx.destination;
     if (!targetNode) return false;
     return synthesizeOneShotSfx(this.audioCtx, targetNode, sfxId, this.sfxVolume);
+  }
+
+  /**
+   * Bluetooth Anti-Sleep Keep-Alive (inaudible ~-90dB 20Hz carrier directly to destination)
+   */
+  getBluetoothKeepAlive() {
+    return this.btKeepAlive;
+  }
+
+  setBluetoothKeepAlive(enabled) {
+    this.btKeepAlive = Boolean(enabled);
+    if (this.btKeepAlive) {
+      this._startKeepAlive();
+    } else {
+      this._stopKeepAlive();
+    }
+    return this.btKeepAlive;
+  }
+
+  _startKeepAlive() {
+    if (
+      this._keepAliveOsc ||
+      !this.audioCtx ||
+      !this.audioCtx.destination ||
+      typeof this.audioCtx.createOscillator !== 'function' ||
+      typeof this.audioCtx.createGain !== 'function'
+    ) {
+      return;
+    }
+    try {
+      const now = this.audioCtx.currentTime || 0;
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency?.setValueAtTime?.(20, now);
+      if (typeof gain.gain?.setValueAtTime === 'function') {
+        gain.gain.setValueAtTime(0.00003, now);
+      } else if (gain.gain) {
+        gain.gain.value = 0.00003;
+      }
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+      osc.start?.(now);
+      this._keepAliveOsc = osc;
+      this._keepAliveGain = gain;
+    } catch (_) {
+      this._stopKeepAlive();
+    }
+  }
+
+  _stopKeepAlive() {
+    if (this._keepAliveOsc) {
+      try { this._keepAliveOsc.stop?.(); } catch (_) {}
+      try { this._keepAliveOsc.disconnect?.(); } catch (_) {}
+      this._keepAliveOsc = null;
+    }
+    if (this._keepAliveGain) {
+      try { this._keepAliveGain.disconnect?.(); } catch (_) {}
+      this._keepAliveGain = null;
+    }
+  }
+
+  clearSfxCache(trackId = null) {
+    if (trackId) {
+      this._sfxBufferCache.delete(trackId);
+    } else {
+      this._sfxBufferCache.clear();
+    }
+  }
+
+  /**
+   * Plays an imported custom audio file on the independent One-Shot SFX overlay bus
+   * without interrupting active music playback.
+   * @param {Object} track
+   * @returns {Promise<boolean>}
+   */
+  async playOneShotTrack(track) {
+    if (!track) return false;
+    this.initAudioContext();
+
+    const trackGainFactor =
+      typeof track.customGain === 'number' && !isNaN(track.customGain) ? track.customGain : 1.0;
+    const effectiveVol = Math.max(0.05, Math.min(2.0, this.sfxVolume * trackGainFactor));
+    const targetNode = this.compressor || this.masterGain || this.audioCtx?.destination;
+
+    // Preferred path: cached decoded AudioBuffer for zero-latency overlapping playback
+    if (
+      this.audioCtx &&
+      targetNode &&
+      typeof this.audioCtx.createBufferSource === 'function' &&
+      typeof this.audioCtx.createGain === 'function'
+    ) {
+      let decoded = this._sfxBufferCache.get(track.id) || null;
+      if (!decoded && typeof this.audioCtx.decodeAudioData === 'function') {
+        const rawBuf = await this._extractTrackArrayBuffer(track);
+        if (rawBuf) {
+          try {
+            decoded = await this.audioCtx.decodeAudioData(rawBuf);
+            if (decoded && track.id) {
+              this._sfxBufferCache.set(track.id, decoded);
+            }
+          } catch (_) {
+            decoded = null;
+          }
+        }
+      }
+
+      if (decoded) {
+        const now = this.audioCtx.currentTime || 0;
+        const src = this.audioCtx.createBufferSource();
+        src.buffer = decoded;
+        const gain = this.audioCtx.createGain();
+        if (typeof gain.gain?.setValueAtTime === 'function') {
+          gain.gain.setValueAtTime(effectiveVol, now);
+        } else if (gain.gain) {
+          gain.gain.value = effectiveVol;
+        }
+        src.connect(gain);
+        gain.connect(targetNode);
+        src.onended = () => {
+          try { src.disconnect(); } catch (_) {}
+          try { gain.disconnect(); } catch (_) {}
+        };
+        src.start(now);
+        return true;
+      }
+    }
+
+    // Fallback path: standalone temporary HTMLAudioElement (still independent of currentTrack)
+    const AudioConstructor =
+      (typeof window !== 'undefined' && window.Audio) ||
+      (typeof Audio !== 'undefined' ? Audio : null);
+    if (!AudioConstructor) return false;
+
+    let tempUrl = null;
+    let srcUrl = track.url || null;
+    if (!srcUrl && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+      if (typeof Blob !== 'undefined' && track.blob instanceof Blob) {
+        tempUrl = URL.createObjectURL(track.blob);
+        srcUrl = tempUrl;
+      } else if (
+        (typeof ArrayBuffer !== 'undefined' && track.blob instanceof ArrayBuffer) ||
+        (typeof Uint8Array !== 'undefined' && track.blob instanceof Uint8Array)
+      ) {
+        const blob = new Blob([track.blob], { type: track.type || 'audio/mpeg' });
+        tempUrl = URL.createObjectURL(blob);
+        srcUrl = tempUrl;
+      }
+    }
+    if (!srcUrl) return false;
+
+    const audio = new AudioConstructor(srcUrl);
+    audio.volume = Math.max(0, Math.min(1, effectiveVol * this.volume));
+    const cleanup = () => {
+      if (tempUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+        try { URL.revokeObjectURL(tempUrl); } catch (_) {}
+      }
+    };
+    audio.onended = cleanup;
+    audio.onerror = cleanup;
+    try {
+      await audio.play();
+      return true;
+    } catch (_) {
+      cleanup();
+      return false;
+    }
   }
 
   getCurrentTrack() {
