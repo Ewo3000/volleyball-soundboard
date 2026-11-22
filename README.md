@@ -21,7 +21,7 @@ Eine moderne, offline-fähige Web-App (PWA) als digitales DJ-Pult für Volleybal
   - **Eigene Effekt-Dateien:** Werden aus dem Unterordner `effekte/` (oder mit Suffix `_SFX`) auf demselben unabhängigen Overlay-Bus abgespielt — laufende Musik wird nicht gestoppt!
 - **Timer & Spielstand:**
   - **30-Sekunden-Countdown** direkt auf dem Timeout-Button und **3:00-Minuten-Satzpausen-Timer** mit `+30s`, Reset und `Auto-Fade 0:05`.
-  - **🏐 Optionaler Mini-Spielstand im Header:** Heim : Gast, Satzstand, direkte `−`-Korrektur, leuchtender `↩`-Rückgängig-Button für schnelle Vertipper-Korrektur und automatische **SATZBALL / DEUCE / MATCHBALL**-Erkennung.
+  - **🏐 Optionaler Mini-Spielstand im Header:** Minimalistische Anzeige (**SV : GAST**) ohne eigene Kontrollbuttons — direkt an die Soundboard-Buttons gekoppelt (*Ass*, *Block*, *Eigene Punkte*, *Sonstiges* → **+1 SV**; *Gegnerpunkte*/*Gegner* → **+1 GAST**). Bei schnellem Umwählen innerhalb von 5 Sekunden wird der vorherige Punkt automatisch korrigiert; sofortiges `■ STOP` (oder Hard-Cut) nimmt den letzten Punkt zurück. Auf `0:0` zurücksetzbar in den Einstellungen oder über `Reset`.
 - **Song-Kontextmenü (Long-Press / Rechtsklick):** Langes Tippen (Touch) oder Rechtsklick auf jeden Song-Button öffnet ein Menü zum **⭐ Favoriten oben anpinnen**, Kategorie wechseln, Lautstärke vorab anpassen oder einzelnen Song entfernen.
 - **Spektakuläre Vollbild-Animationen, Live-Fortschritt & Visualizer:**
   - 🔥 **Ass (Flammen)**, 🛡️ **Block (Schild & Schockwelle)** und ⚡ **6/7 Hype** (vollständig klicktransparent).
@@ -101,5 +101,5 @@ Getestet werden u. a.:
 - Suffix- & Unterordner-Erkennung (`effekte/`, `_SFX`, `_ACE`, `_HIT`, `_BLOCK`, `_OPP`, `_PAUSE1..4`, etc.) & `pinned`-Sortierung
 - IndexedDB & Memory Storage Engine (inkl. `updateTrackMeta`, `deleteTrack`, `updateTrackGain`)
 - Web Audio Pipeline: RMS-Lautstärke-Angleichung, 5-Preset-EQ, Hard-Cut STOP, Bluetooth-Wachhalter, AnalyserNode-Telemetrie & One-Shot SFX-Overlay-Bus
-- Spieltags-Controller: Timeout/Pause-Countdowns, Warm-Up Auto-Play, Song-Kontextmenü, Tastatur-Shortcuts, JSON-Backup und Mini-Spielstand inkl. Undo & Crunch-Time
+- Spieltags-Controller: Timeout/Pause-Countdowns, Warm-Up Auto-Play, Song-Kontextmenü, Tastatur-Shortcuts, JSON-Backup und button-gekoppelter Minimal-Spielstand inkl. Vertipper-Korrektur & Crunch-Time
 - 3 Themes (`classic`, `m3-expressive`, `light-hall`), native `<dialog>`-Overlays & Offline-Service-Worker

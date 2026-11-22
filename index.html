@@ -141,32 +141,17 @@
             <span class="compact-np-title" id="compact-now-playing-title"></span>
             <span class="compact-np-time" id="compact-now-playing-time">0:00</span>
           </button>
-          <!-- Optional Mini Scoreboard (toggleable in Settings) -->
-          <div class="header-scoreboard" id="header-scoreboard" style="display: none;" aria-label="Spielstand">
-            <div class="score-side score-home">
-              <button type="button" class="btn-score-minus" id="btn-score-home-minus" title="Heimpunkt korrigieren (−1)" aria-label="Heimpunkt minus 1">−</button>
-              <button type="button" class="btn-score-plus" id="btn-score-home-plus" title="Punkt SV 1845 (+1)" aria-label="Punkt SV 1845 plus 1">
-                <span class="score-team-tag">SV</span>
-                <span class="score-value" id="score-home-val">0</span>
-              </button>
-            </div>
-            <div class="score-center-meta">
-              <span class="score-colon">:</span>
-              <span class="score-sets-badge" id="score-sets-badge" title="Satzstand (Heim:Gast)">0:0</span>
-              <span class="score-crunch-badge" id="score-crunch-badge" style="display: none;">SATZBALL</span>
-            </div>
-            <div class="score-side score-guest">
-              <button type="button" class="btn-score-plus" id="btn-score-guest-plus" title="Punkt Gast (+1)" aria-label="Punkt Gast plus 1">
-                <span class="score-value" id="score-guest-val">0</span>
-                <span class="score-team-tag">GAST</span>
-              </button>
-              <button type="button" class="btn-score-minus" id="btn-score-guest-minus" title="Gastpunkt korrigieren (−1)" aria-label="Gastpunkt minus 1">−</button>
-            </div>
-            <div class="score-actions">
-              <button type="button" class="btn-score-tool btn-score-undo" id="btn-score-undo" title="Letzte Eingabe rückgängig machen" aria-label="Letzte Spielstand-Eingabe rückgängig machen" disabled>↩</button>
-              <button type="button" class="btn-score-tool" id="btn-score-next-set" title="Satz abschließen &amp; neuen Satz starten" aria-label="Satz abschließen">🏆</button>
-              <button type="button" class="btn-score-tool" id="btn-score-reset" title="Spielstand komplett zurücksetzen" aria-label="Spielstand zurücksetzen">↺</button>
-            </div>
+          <!-- Optional Minimalist Scoreboard (toggleable in Settings, auto-coupled to soundboard buttons) -->
+          <div class="header-scoreboard" id="header-scoreboard" style="display: none;" aria-label="Spielstand" aria-live="polite" title="Spielstand (automatisch an Soundboard-Buttons gekoppelt)">
+            <span class="score-team score-team-home">
+              <span class="score-team-tag">SV</span>
+              <span class="score-value" id="score-home-val">0</span>
+            </span>
+            <span class="score-colon" aria-hidden="true">:</span>
+            <span class="score-team score-team-guest">
+              <span class="score-value" id="score-guest-val">0</span>
+              <span class="score-team-tag">GAST</span>
+            </span>
           </div>
         </div>
 
@@ -668,12 +653,15 @@
             <div class="settings-row">
               <div class="settings-row-info">
                 <span class="settings-row-title">🏐 Mini-Spielstand im Header</span>
-                <span class="settings-row-desc">Heim : Gast + Satzstand inkl. ↩-Rückgängig &amp; Satzball-Hinweis</span>
+                <span class="settings-row-desc">Minimalistisch (SV : GAST) · zählt automatisch beim Tippen der Punkt-Buttons (inkl. 5 s Vertipp-Korrektur)</span>
               </div>
-              <button type="button" class="btn-header-tool settings-toggle-btn" id="btn-scoreboard-toggle" aria-pressed="false">
-                <span class="auto-norm-dot"></span>
-                <span id="scoreboard-toggle-status">AUS</span>
-              </button>
+              <div class="settings-row-controls">
+                <button type="button" class="btn-header-tool btn-score-reset-setting" id="btn-score-reset" title="Spielstand auf 0:0 zurücksetzen">↺ 0:0</button>
+                <button type="button" class="btn-header-tool settings-toggle-btn" id="btn-scoreboard-toggle" aria-pressed="false">
+                  <span class="auto-norm-dot"></span>
+                  <span id="scoreboard-toggle-status">AUS</span>
+                </button>
+              </div>
             </div>
             <div class="settings-row">
               <div class="settings-row-info">
@@ -744,7 +732,7 @@
             <div class="settings-row">
               <div class="settings-row-info">
                 <span class="settings-row-title">App-Version &amp; Update</span>
-                <span class="settings-row-desc">SV 1845 Volleyball DJ · v1.16.0</span>
+                <span class="settings-row-desc">SV 1845 Volleyball DJ · v1.16.1</span>
               </div>
               <button type="button" class="btn-header-tool btn-check-update" id="btn-check-update" title="Nach App-Updates suchen" aria-label="Nach App-Updates suchen">🔄</button>
             </div>

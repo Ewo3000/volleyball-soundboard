@@ -365,56 +365,123 @@ describe('v1.16.0 App Controllers: Context Menu, Shortcuts, Backup & Mini Scoreb
     }
   });
 
-  it('Mini Scoreboard handles +1, −1, Undo correction, set completion, and Crunch-Time / Matchball detection', async () => {
+  it('Minimalist Scoreboard couples to soundboard buttons, supports mistap correction & Crunch-Time detection', async () => {
+    const { MemoryStorageEngine, setDefaultStorage } = await import('../js/db.js');
+    const memoryDb = new MemoryStorageEngine();
+    await memoryDb.init();
+    setDefaultStorage(memoryDb);
+
     const app = await import(`../js/app.js?t=${Date.now()}`);
+    const origTracks = app.allTracks.splice(0, app.allTracks.length);
+    const origPlayTrack = app.audioEngine.playTrack;
+    const origStop = app.audioEngine.stop;
+    const origHardStop = app.audioEngine.hardStop;
 
-    // Crunch-Time pure unit checks
-    assert.deepEqual(app.getScoreboardCrunchStatus({ home: 23, guest: 22, setsHome: 0, setsGuest: 0 }), {
-      isCrunch: false,
-      label: ''
-    });
-    assert.deepEqual(app.getScoreboardCrunchStatus({ home: 24, guest: 22, setsHome: 0, setsGuest: 0 }), {
-      isCrunch: true,
-      label: 'SATZBALL'
-    });
-    assert.deepEqual(app.getScoreboardCrunchStatus({ home: 24, guest: 24, setsHome: 1, setsGuest: 0 }), {
-      isCrunch: true,
-      label: 'DEUCE'
-    });
-    assert.deepEqual(app.getScoreboardCrunchStatus({ home: 24, guest: 20, setsHome: 2, setsGuest: 1 }), {
-      isCrunch: true,
-      label: 'MATCHBALL'
-    });
-    assert.deepEqual(app.getScoreboardCrunchStatus({ home: 14, guest: 13, setsHome: 2, setsGuest: 2 }), {
-      isCrunch: true,
-      label: 'MATCHBALL'
-    });
+    app.audioEngine.playTrack = async () => {};
+    app.audioEngine.stop = () => {};
+    app.audioEngine.hardStop = () => {};
 
-    // Interactive scoreboard mutation & undo correction
-    app.resetScoreboard();
-    app.scoreUndoStack.length = 0;
+    try {
+      // Crunch-Time pure unit checks (25-pt threshold at 24)
+      assert.deepEqual(app.getScoreboardCrunchStatus({ home: 23, guest: 22 }), {
+        isCrunch: false,
+        label: ''
+      });
+      assert.deepEqual(app.getScoreboardCrunchStatus({ home: 24, guest: 22 }), {
+        isCrunch: true,
+        label: 'SATZBALL'
+      });
+      assert.deepEqual(app.getScoreboardCrunchStatus({ home: 24, guest: 24 }), {
+        isCrunch: true,
+        label: 'DEUCE'
+      });
 
-    app.adjustScore('home', 1);
-    app.adjustScore('home', 1);
-    app.adjustScore('guest', 1);
-    assert.deepEqual(app.scoreboardState, { home: 2, guest: 1, setsHome: 0, setsGuest: 0 });
+      // Track category -> scoreboard team mapping
+      assert.equal(app.getScoreSideForTrack({ category: 'ass_angriff' }), 'home');
+      assert.equal(app.getScoreSideForTrack({ category: 'block' }), 'home');
+      assert.equal(app.getScoreSideForTrack({ category: 'sonstiges_2' }), 'home');
+      assert.equal(app.getScoreSideForTrack({ category: 'gegner' }), 'guest');
+      assert.equal(app.getScoreSideForTrack({ category: 'spass_extras' }), null);
+      assert.equal(app.getScoreSideForTrack({ category: 'timeout' }), null);
+      assert.equal(app.getScoreSideForTrack({ category: 'pause' }), null);
+      assert.equal(app.getScoreSideForTrack({ category: 'sixseven' }), null);
 
-    // Mistyped guest point -> quick 1-tap Undo
-    assert.equal(app.undoLastScoreAction(), true);
-    assert.deepEqual(app.scoreboardState, { home: 2, guest: 0, setsHome: 0, setsGuest: 0 });
+      // Hidden scoreboard ignores button events
+      app.resetScoreboard();
+      app.setScoreboardVisible(false);
+      assert.equal(app.recordButtonScore('home', 1000).action, 'ignored');
+      assert.deepEqual(app.scoreboardState, { home: 0, guest: 0 });
 
-    // Direct -1 correction
-    app.adjustScore('home', -1);
-    assert.equal(app.scoreboardState.home, 1);
+      // Enable minimalist scoreboard
+      app.setScoreboardVisible(true);
+      app.setWarmupMode(false);
 
-    // Finish set & undo accidental set finish
-    app.finishCurrentSet();
-    assert.deepEqual(app.scoreboardState, { home: 0, guest: 0, setsHome: 1, setsGuest: 0 });
-    app.undoLastScoreAction();
-    assert.deepEqual(app.scoreboardState, { home: 1, guest: 0, setsHome: 0, setsGuest: 0 });
+      // Pure timing tests: score -> mistap switch within 5s -> dedupe within 5s -> new score >5s
+      assert.deepEqual(app.recordButtonScore('home', 1000), { action: 'scored', side: 'home', home: 1, guest: 0 });
+      assert.deepEqual(app.recordButtonScore('guest', 3200), {
+        action: 'corrected',
+        from: 'home',
+        to: 'guest',
+        home: 0,
+        guest: 1
+      });
+      assert.deepEqual(app.recordButtonScore('guest', 4500), { action: 'deduped', side: 'guest', home: 0, guest: 1 });
+      assert.deepEqual(app.recordButtonScore('home', 10000), { action: 'scored', side: 'home', home: 1, guest: 1 });
 
-    app.resetScoreboard();
-    app.scoreUndoStack.length = 0;
+      // Normal STOP within 2.5s undoes last score; >2.5s keeps it; Hard-Cut within 5s undoes it
+      assert.equal(app.revertRecentScoreOnStop(11000, { isHardCut: false }), true);
+      assert.deepEqual(app.scoreboardState, { home: 0, guest: 1 });
+
+      assert.deepEqual(app.recordButtonScore('home', 20000), { action: 'scored', side: 'home', home: 1, guest: 1 });
+      assert.equal(app.revertRecentScoreOnStop(23000, { isHardCut: false }), false);
+      assert.deepEqual(app.scoreboardState, { home: 1, guest: 1 });
+      assert.equal(app.revertRecentScoreOnStop(24000, { isHardCut: true }), true);
+      assert.deepEqual(app.scoreboardState, { home: 0, guest: 1 });
+
+      // Warm-Up mode ignores scoring
+      app.setWarmupMode(true);
+      assert.equal(app.recordButtonScore('home', 30000).action, 'ignored');
+      app.setWarmupMode(false);
+
+      // Button coupling via quick actions + handlePlayTrack (no double counting)
+      app.resetScoreboard();
+      const aceTrack = { id: 'ace_1', name: 'Boom_ACE.mp3', cleanTitle: 'Boom', category: 'ass_angriff', suffix: '_ACE', playCount: 0 };
+      const oppTrack = { id: 'opp_1', name: 'Sad_OPP.mp3', cleanTitle: 'Sad', category: 'gegner', suffix: '_OPP', playCount: 0 };
+      const funTrack = { id: 'fun_1', name: 'Fun_FUN.mp3', cleanTitle: 'Fun', category: 'spass_extras', suffix: '_FUN', playCount: 0 };
+      await memoryDb.saveTracks([aceTrack, oppTrack, funTrack]);
+      app.allTracks.push(aceTrack, oppTrack, funTrack);
+
+      app.playAce();
+      // Even though handlePlayTrack is invoked for aceTrack, it must NOT double-count home to 2
+      assert.deepEqual(app.scoreboardState, { home: 1, guest: 0 });
+
+      // Tapping Gegnerpunkte immediately after Ace (<5s) corrects mistap: SV 1->0, GAST 0->1
+      app.playRandomOpponent();
+      assert.deepEqual(app.scoreboardState, { home: 0, guest: 1 });
+
+      // Immediate stopAudio reverts the recent point back to 0:0
+      app.stopAudio();
+      assert.deepEqual(app.scoreboardState, { home: 0, guest: 0 });
+
+      // Neutral Spaß track via handlePlayTrack does not alter score
+      await app.handlePlayTrack(funTrack);
+      assert.deepEqual(app.scoreboardState, { home: 0, guest: 0 });
+
+      // Direct column click on a home/guest track increments once
+      await app.handlePlayTrack(aceTrack);
+      assert.deepEqual(app.scoreboardState, { home: 1, guest: 0 });
+
+      app.resetScoreboard();
+      assert.deepEqual(app.scoreboardState, { home: 0, guest: 0 });
+    } finally {
+      app.setScoreboardVisible(false);
+      app.setWarmupMode(false);
+      app.resetScoreboard();
+      app.audioEngine.playTrack = origPlayTrack;
+      app.audioEngine.stop = origStop;
+      app.audioEngine.hardStop = origHardStop;
+      app.allTracks.splice(0, app.allTracks.length, ...origTracks);
+    }
   });
 });
 
@@ -424,9 +491,24 @@ describe('v1.16.0 Markup, CSS & Documentation Integrity', () => {
     const css = fs.readFileSync(path.join(rootDir, 'css/app.css'), 'utf8');
     const readme = fs.readFileSync(path.join(rootDir, 'README.md'), 'utf8');
 
-    // Scoreboard & Settings & Context Modal & Custom SFX
-    assert.match(html, /id="header-scoreboard"/);
-    assert.match(html, /id="btn-score-undo"/);
+    // Minimalist Scoreboard must have NO control buttons inside #header-scoreboard
+    const sbMatch = html.match(/<div class="header-scoreboard" id="header-scoreboard"[\s\S]*?<\/div>/);
+    assert.ok(sbMatch, 'index.html must contain #header-scoreboard');
+    const sbHtml = sbMatch[0];
+    assert.ok(sbHtml.includes('id="score-home-val"'));
+    assert.ok(sbHtml.includes('id="score-guest-val"'));
+    assert.ok(sbHtml.includes('>SV<'));
+    assert.ok(sbHtml.includes('>GAST<'));
+    assert.ok(!sbHtml.includes('<button'), '#header-scoreboard must be strictly minimalist with zero <button> controls');
+
+    // Reset button lives in Settings, and legacy manual scoreboard buttons are gone
+    assert.ok(!html.includes('id="btn-score-undo"'));
+    assert.ok(!html.includes('id="btn-score-home-plus"'));
+    assert.ok(!html.includes('id="btn-score-guest-plus"'));
+    assert.ok(!html.includes('id="btn-score-next-set"'));
+    assert.match(html, /id="btn-score-reset"/);
+
+    // Settings & Context Modal & Custom SFX
     assert.match(html, /id="sfx-custom-section"/);
     assert.match(html, /id="btn-load-sfx-files"/);
     assert.match(html, /id="btn-bt-keepalive"/);
@@ -442,6 +524,7 @@ describe('v1.16.0 Markup, CSS & Documentation Integrity', () => {
 
     // CSS styles & zero external URLs
     assert.ok(css.includes('.header-scoreboard'));
+    assert.ok(css.includes('.score-team-home'));
     assert.ok(css.includes('.track-btn.is-pinned'));
     assert.ok(css.includes('.track-context-card'));
     assert.ok(css.includes('.settings-details'));

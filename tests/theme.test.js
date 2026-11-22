@@ -232,7 +232,7 @@ test('sw.js invalidates cache version and includes js/theme.js & js/sfx-engine.j
   const sw = fs.readFileSync(SW_PATH, 'utf8');
 
   // Verify version incremented to 1.16.x
-  assert.ok(sw.includes('sv1845-dj-v1.16.0'), 'sw.js cache version must be incremented to v1.16.0');
+  assert.ok(sw.includes('sv1845-dj-v1.16.1'), 'sw.js cache version must be incremented to v1.16.1');
 
   // Verify js/theme.js and js/sfx-engine.js are cached
   assert.ok(sw.includes('js/theme.js'), 'sw.js must cache js/theme.js for 100% offline capability');

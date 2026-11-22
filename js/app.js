@@ -76,12 +76,11 @@ export let contextMenuTrackId = null;
 
 export let scoreboardState = {
   home: 0,
-  guest: 0,
-  setsHome: 0,
-  setsGuest: 0
+  guest: 0
 };
-export let scoreUndoStack = [];
-let scoreUndoHighlightTimer = null;
+export let lastScoreEvent = null;
+let scoreCorrectedFlashTimer = null;
+let scoreBumpTimer = null;
 
 export const TIMEOUT_DURATION_SEC = 30;
 export const PAUSE_DURATION_SEC = 180;
@@ -705,8 +704,14 @@ export function updateTrackDOMPlayCount(trackId, count) {
 /**
  * Plays a track and records playCount
  */
-export async function handlePlayTrack(track) {
+export async function handlePlayTrack(track, { skipAutoScore = false } = {}) {
   if (!track) return;
+  if (!skipAutoScore) {
+    const scoreSide = getScoreSideForTrack(track);
+    if (scoreSide) {
+      recordButtonScore(scoreSide);
+    }
+  }
   try {
     resetStopFadeState();
 
@@ -1047,6 +1052,8 @@ export async function handleResetCounts() {
   for (const t of allTracks) {
     t.playCount = 0;
   }
+
+  resetScoreboard();
 
   if (typeof document !== 'undefined') {
     document.querySelectorAll?.('.play-badge, .play-count')?.forEach?.((badge) => {
@@ -1547,6 +1554,7 @@ export function triggerBlockAnimation() {
 
 
 export function playAce(triggerBtn) {
+  recordButtonScore('home');
   triggerAceAnimation();
   const aceTracks = allTracks.filter(
     (t) => t.suffix === '_ACE' || /_ACE$/i.test(stripExtension(t.name))
@@ -1559,7 +1567,7 @@ export function playAce(triggerBtn) {
       const btn = document.getElementById('btn-ace');
       if (btn) setActiveTriggerButton(btn);
     }
-    handlePlayTrack(track);
+    handlePlayTrack(track, { skipAutoScore: true });
   } else {
     clearActiveTriggerButton();
     console.warn('Keine Ass-Tracks (_ACE) vorhanden');
@@ -1567,6 +1575,7 @@ export function playAce(triggerBtn) {
 }
 
 export function playBlock(triggerBtn) {
+  recordButtonScore('home');
   triggerBlockAnimation();
   const blockTracks = allTracks.filter(
     (t) => t.category === 'block' || t.suffix === '_BLOCK' || /_BLOCK$/i.test(stripExtension(t.name))
@@ -1579,7 +1588,7 @@ export function playBlock(triggerBtn) {
       const btn = document.getElementById('btn-block');
       if (btn) setActiveTriggerButton(btn);
     }
-    handlePlayTrack(track);
+    handlePlayTrack(track, { skipAutoScore: true });
   } else {
     clearActiveTriggerButton();
     console.warn('Keine Block-Tracks (_BLOCK) vorhanden');
@@ -1588,6 +1597,7 @@ export function playBlock(triggerBtn) {
 
 
 export function playRandomOwn(triggerBtn) {
+  recordButtonScore('home');
   const ownTracks = allTracks.filter((t) =>
     ['ass_angriff', 'sonstiges', 'sonstiges_1', 'sonstiges_2', 'sonstiges_3'].includes(t.category)
   );
@@ -1599,7 +1609,7 @@ export function playRandomOwn(triggerBtn) {
       const btn = document.getElementById('btn-random-own');
       if (btn) setActiveTriggerButton(btn);
     }
-    handlePlayTrack(track);
+    handlePlayTrack(track, { skipAutoScore: true });
   } else {
     clearActiveTriggerButton();
     console.warn('Keine Tracks für eigene Punkte vorhanden');
@@ -1607,6 +1617,7 @@ export function playRandomOwn(triggerBtn) {
 }
 
 export function playRandomOpponent(triggerBtn) {
+  recordButtonScore('guest');
   const opponentTracks = allTracks.filter((t) => t.category === 'gegner');
   const track = pickLeastPlayedRandomTrack(opponentTracks);
   if (track) {
@@ -1616,7 +1627,7 @@ export function playRandomOpponent(triggerBtn) {
       const btn = document.getElementById('btn-random-opponent');
       if (btn) setActiveTriggerButton(btn);
     }
-    handlePlayTrack(track);
+    handlePlayTrack(track, { skipAutoScore: true });
   } else {
     clearActiveTriggerButton();
     console.warn('Keine Tracks für Gegnerpunkte vorhanden');
@@ -1668,7 +1679,7 @@ export function toggleWarmupMode() {
   if (nextState && !(audioEngine.getCurrentTrack?.() || audioEngine.currentTrack)) {
     const nextTrack = pickNextWarmupTrack(null);
     if (nextTrack) {
-      handlePlayTrack(nextTrack);
+      handlePlayTrack(nextTrack, { skipAutoScore: true });
     } else {
       setWarmupMode(false);
       console.warn('Warm-Up Auto-Play: Keine Songs geladen');
@@ -1709,6 +1720,7 @@ export function resetStopFadeState() {
 }
 
 export function hardStopAudio() {
+  revertRecentScoreOnStop(Date.now(), { isHardCut: true });
   resetStopFadeState();
   setWarmupMode(false);
   stopTimeoutCountdown();
@@ -1750,6 +1762,7 @@ export function stopAudio() {
     return;
   }
 
+  revertRecentScoreOnStop(Date.now(), { isHardCut: false });
   const wasPlaying = Boolean(audioEngine.getCurrentTrack?.() || audioEngine.currentAudioElement);
 
   setWarmupMode(false);
@@ -2387,53 +2400,75 @@ export async function importSettingsBackup(jsonInput) {
 }
 
 /**
- * #12: Optional Header Mini Scoreboard with Quick Undo Correction & Crunch-Time Detection
+ * #12: Optional Minimalist Header Scoreboard (auto-coupled to soundboard buttons + short mistap correction)
  */
+export const SCORE_CORRECTION_WINDOW_MS = 5000;
+export const SCORE_STOP_UNDO_WINDOW_MS = 2500;
+
+const HOME_SCORE_CATEGORIES = new Set([
+  'ass_angriff',
+  'block',
+  'sonstiges',
+  'sonstiges_1',
+  'sonstiges_2',
+  'sonstiges_3'
+]);
+
+export function getScoreSideForTrack(track) {
+  if (!track || !track.category) return null;
+  if (HOME_SCORE_CATEGORIES.has(track.category)) return 'home';
+  if (track.category === 'gegner') return 'guest';
+  return null;
+}
+
 export function getScoreboardCrunchStatus(state = scoreboardState) {
   const home = Math.max(0, Number(state?.home) || 0);
   const guest = Math.max(0, Number(state?.guest) || 0);
-  const setsHome = Math.max(0, Number(state?.setsHome) || 0);
-  const setsGuest = Math.max(0, Number(state?.setsGuest) || 0);
 
-  // Best-of-5 volleyball: 5th set (4 sets already finished) is Tie-Break to 15 (set point at 14)
-  const isTieBreak = setsHome + setsGuest >= 4;
-  const setPointAt = isTieBreak ? 14 : 24;
-
-  if (home < setPointAt && guest < setPointAt) {
+  if (home < 24 && guest < 24) {
     return { isCrunch: false, label: '' };
   }
   if (home === guest) {
     return { isCrunch: true, label: 'DEUCE' };
   }
-
-  const leaderHasTwoSets = home > guest ? setsHome >= 2 : setsGuest >= 2;
-  return {
-    isCrunch: true,
-    label: leaderHasTwoSets ? 'MATCHBALL' : 'SATZBALL'
-  };
+  return { isCrunch: true, label: 'SATZBALL' };
 }
 
-function pushScoreUndoSnapshot() {
-  scoreUndoStack.push({ ...scoreboardState });
-  if (scoreUndoStack.length > 15) {
-    scoreUndoStack.shift();
-  }
-}
-
-function triggerUndoHighlight() {
+function flashScoreElement(id, className, timerRefGetter, timerRefSetter, durationMs) {
   if (typeof document === 'undefined') return;
-  const undoBtn = document.getElementById('btn-score-undo');
-  if (!undoBtn) return;
-  undoBtn.classList?.remove?.('is-recent');
-  undoBtn.classList?.add?.('is-recent');
-  if (scoreUndoHighlightTimer) clearTimeout(scoreUndoHighlightTimer);
-  scoreUndoHighlightTimer = setTimeout(() => {
-    scoreUndoHighlightTimer = null;
-    undoBtn.classList?.remove?.('is-recent');
-  }, 8000);
-  if (typeof scoreUndoHighlightTimer?.unref === 'function') {
-    scoreUndoHighlightTimer.unref();
-  }
+  const el = document.getElementById(id);
+  if (!el || !el.classList) return;
+  el.classList.remove(className);
+  el.classList.add(className);
+  const prev = timerRefGetter();
+  if (prev) clearTimeout(prev);
+  const t = setTimeout(() => {
+    timerRefSetter(null);
+    el.classList?.remove?.(className);
+  }, durationMs);
+  if (typeof t?.unref === 'function') t.unref();
+  timerRefSetter(t);
+}
+
+function flashScoreCorrected() {
+  flashScoreElement(
+    'header-scoreboard',
+    'is-corrected',
+    () => scoreCorrectedFlashTimer,
+    (v) => { scoreCorrectedFlashTimer = v; },
+    900
+  );
+}
+
+function flashScoreValueBump(side) {
+  const id = side === 'guest' ? 'score-guest-val' : 'score-home-val';
+  flashScoreElement(
+    id,
+    'is-bumped',
+    () => scoreBumpTimer,
+    (v) => { scoreBumpTimer = v; },
+    380
+  );
 }
 
 export function renderScoreboardUI() {
@@ -2451,29 +2486,14 @@ export function renderScoreboardUI() {
 
   const homeVal = document.getElementById('score-home-val');
   const guestVal = document.getElementById('score-guest-val');
-  const setsBadge = document.getElementById('score-sets-badge');
-  const crunchBadge = document.getElementById('score-crunch-badge');
-  const undoBtn = document.getElementById('btn-score-undo');
   const boardContainer = document.getElementById('board-container');
 
   if (homeVal) homeVal.textContent = String(scoreboardState.home);
   if (guestVal) guestVal.textContent = String(scoreboardState.guest);
-  if (setsBadge) setsBadge.textContent = `${scoreboardState.setsHome}:${scoreboardState.setsGuest}`;
-
-  if (undoBtn) {
-    undoBtn.disabled = scoreUndoStack.length === 0;
-  }
 
   const crunch = getScoreboardCrunchStatus(scoreboardState);
   sbEl?.classList?.toggle?.('is-crunch-time', crunch.isCrunch);
   boardContainer?.classList?.toggle?.('is-crunch-time', isScoreboardVisible && crunch.isCrunch);
-
-  if (crunchBadge) {
-    crunchBadge.textContent = crunch.label;
-    if (crunchBadge.style) {
-      crunchBadge.style.display = crunch.isCrunch ? 'inline-block' : 'none';
-    }
-  }
 }
 
 function persistScoreboardState() {
@@ -2495,73 +2515,61 @@ export function toggleScoreboardVisible() {
   return setScoreboardVisible(!isScoreboardVisible);
 }
 
-export function adjustScore(side, delta = 1) {
-  const key = side === 'guest' ? 'guest' : 'home';
-  const nextVal = Math.max(0, (Number(scoreboardState[key]) || 0) + Number(delta || 0));
-  if (nextVal === scoreboardState[key]) return { ...scoreboardState };
-
-  pushScoreUndoSnapshot();
-  scoreboardState[key] = nextVal;
-  renderScoreboardUI();
-  if (delta > 0) {
-    triggerUndoHighlight();
+export function recordButtonScore(side, nowMs = Date.now()) {
+  if (!isScoreboardVisible || isWarmupMode || (side !== 'home' && side !== 'guest')) {
+    return { action: 'ignored', ...scoreboardState };
   }
+
+  const ts = typeof nowMs === 'number' && !isNaN(nowMs) ? nowMs : Date.now();
+  if (lastScoreEvent && ts - lastScoreEvent.timestamp <= SCORE_CORRECTION_WINDOW_MS) {
+    if (lastScoreEvent.side !== side) {
+      const prevSide = lastScoreEvent.side;
+      scoreboardState[prevSide] = Math.max(0, (Number(scoreboardState[prevSide]) || 0) - 1);
+      scoreboardState[side] = Math.max(0, (Number(scoreboardState[side]) || 0) + 1);
+      lastScoreEvent = { side, timestamp: ts };
+      renderScoreboardUI();
+      flashScoreCorrected();
+      flashScoreValueBump(side);
+      persistScoreboardState();
+      return { action: 'corrected', from: prevSide, to: side, ...scoreboardState };
+    }
+    return { action: 'deduped', side, ...scoreboardState };
+  }
+
+  scoreboardState[side] = Math.max(0, (Number(scoreboardState[side]) || 0) + 1);
+  lastScoreEvent = { side, timestamp: ts };
+  renderScoreboardUI();
+  flashScoreValueBump(side);
   persistScoreboardState();
-  return { ...scoreboardState };
+  return { action: 'scored', side, ...scoreboardState };
 }
 
-export function undoLastScoreAction() {
-  if (scoreUndoStack.length === 0) return false;
-  const previous = scoreUndoStack.pop();
-  scoreboardState = {
-    home: Math.max(0, Number(previous.home) || 0),
-    guest: Math.max(0, Number(previous.guest) || 0),
-    setsHome: Math.max(0, Number(previous.setsHome) || 0),
-    setsGuest: Math.max(0, Number(previous.setsGuest) || 0)
-  };
-  if (scoreUndoHighlightTimer) {
-    clearTimeout(scoreUndoHighlightTimer);
-    scoreUndoHighlightTimer = null;
+export function revertRecentScoreOnStop(nowMs = Date.now(), { isHardCut = false } = {}) {
+  if (!isScoreboardVisible || !lastScoreEvent) {
+    return false;
   }
-  if (typeof document !== 'undefined') {
-    document.getElementById('btn-score-undo')?.classList?.remove?.('is-recent');
+  const ts = typeof nowMs === 'number' && !isNaN(nowMs) ? nowMs : Date.now();
+  const windowMs = isHardCut ? SCORE_CORRECTION_WINDOW_MS : SCORE_STOP_UNDO_WINDOW_MS;
+  if (ts - lastScoreEvent.timestamp > windowMs) {
+    return false;
   }
+
+  const side = lastScoreEvent.side;
+  scoreboardState[side] = Math.max(0, (Number(scoreboardState[side]) || 0) - 1);
+  lastScoreEvent = null;
   renderScoreboardUI();
+  flashScoreCorrected();
   persistScoreboardState();
   return true;
 }
 
-export function finishCurrentSet() {
+export function resetScoreboard() {
+  lastScoreEvent = null;
   if (scoreboardState.home === 0 && scoreboardState.guest === 0) {
     return { ...scoreboardState };
   }
-  pushScoreUndoSnapshot();
-  if (scoreboardState.home > scoreboardState.guest) {
-    scoreboardState.setsHome += 1;
-  } else if (scoreboardState.guest > scoreboardState.home) {
-    scoreboardState.setsGuest += 1;
-  }
-  scoreboardState.home = 0;
-  scoreboardState.guest = 0;
+  scoreboardState = { home: 0, guest: 0 };
   renderScoreboardUI();
-  triggerUndoHighlight();
-  persistScoreboardState();
-  return { ...scoreboardState };
-}
-
-export function resetScoreboard() {
-  if (
-    scoreboardState.home === 0 &&
-    scoreboardState.guest === 0 &&
-    scoreboardState.setsHome === 0 &&
-    scoreboardState.setsGuest === 0
-  ) {
-    return { ...scoreboardState };
-  }
-  pushScoreUndoSnapshot();
-  scoreboardState = { home: 0, guest: 0, setsHome: 0, setsGuest: 0 };
-  renderScoreboardUI();
-  triggerUndoHighlight();
   persistScoreboardState();
   return { ...scoreboardState };
 }
@@ -2581,7 +2589,7 @@ export async function handleClearAll() {
   }
 }
 
-export const APP_VERSION = '1.16.0';
+export const APP_VERSION = '1.16.1';
 
 export async function handleCheckUpdate() {
   const updateBtn = typeof document !== 'undefined' ? document.getElementById('btn-check-update') : null;
@@ -2794,7 +2802,7 @@ export function setupEventListeners() {
     if (isWarmupMode) {
       const nextTrack = pickNextWarmupTrack(finishedTrack);
       if (nextTrack) {
-        handlePlayTrack(nextTrack);
+        handlePlayTrack(nextTrack, { skipAutoScore: true });
       } else {
         setWarmupMode(false);
       }
@@ -3489,31 +3497,7 @@ export function setupEventListeners() {
     });
   }
 
-  // Header Mini Scoreboard listeners (#12)
-  const btnScoreHomePlus = document.getElementById('btn-score-home-plus');
-  if (btnScoreHomePlus && typeof btnScoreHomePlus.addEventListener === 'function') {
-    btnScoreHomePlus.addEventListener('click', () => adjustScore('home', 1));
-  }
-  const btnScoreHomeMinus = document.getElementById('btn-score-home-minus');
-  if (btnScoreHomeMinus && typeof btnScoreHomeMinus.addEventListener === 'function') {
-    btnScoreHomeMinus.addEventListener('click', () => adjustScore('home', -1));
-  }
-  const btnScoreGuestPlus = document.getElementById('btn-score-guest-plus');
-  if (btnScoreGuestPlus && typeof btnScoreGuestPlus.addEventListener === 'function') {
-    btnScoreGuestPlus.addEventListener('click', () => adjustScore('guest', 1));
-  }
-  const btnScoreGuestMinus = document.getElementById('btn-score-guest-minus');
-  if (btnScoreGuestMinus && typeof btnScoreGuestMinus.addEventListener === 'function') {
-    btnScoreGuestMinus.addEventListener('click', () => adjustScore('guest', -1));
-  }
-  const btnScoreUndo = document.getElementById('btn-score-undo');
-  if (btnScoreUndo && typeof btnScoreUndo.addEventListener === 'function') {
-    btnScoreUndo.addEventListener('click', () => undoLastScoreAction());
-  }
-  const btnScoreNextSet = document.getElementById('btn-score-next-set');
-  if (btnScoreNextSet && typeof btnScoreNextSet.addEventListener === 'function') {
-    btnScoreNextSet.addEventListener('click', () => finishCurrentSet());
-  }
+  // Scoreboard reset button inside Settings (#12)
   const btnScoreReset = document.getElementById('btn-score-reset');
   if (btnScoreReset && typeof btnScoreReset.addEventListener === 'function') {
     btnScoreReset.addEventListener('click', () => resetScoreboard());
@@ -3771,9 +3755,7 @@ export async function initApp() {
     if (savedScoreboardState && typeof savedScoreboardState === 'object') {
       scoreboardState = {
         home: Math.max(0, Number(savedScoreboardState.home) || 0),
-        guest: Math.max(0, Number(savedScoreboardState.guest) || 0),
-        setsHome: Math.max(0, Number(savedScoreboardState.setsHome) || 0),
-        setsGuest: Math.max(0, Number(savedScoreboardState.setsGuest) || 0)
+        guest: Math.max(0, Number(savedScoreboardState.guest) || 0)
       };
     }
     const savedScoreboardVisible = await getSetting('scoreboardVisible', false);
